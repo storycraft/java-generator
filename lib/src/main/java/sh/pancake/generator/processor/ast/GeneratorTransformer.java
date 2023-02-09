@@ -82,7 +82,8 @@ public class GeneratorTransformer extends JCTree.Visitor {
     public GeneratorMap finish() {
         finishSub();
         current.add(shared.treeMaker
-                .Exec(shared.treeMaker.Assign(shared.treeMaker.Ident(shared.names.fromString(Constants.RESULT_VAR_NAME)),
+                .Exec(shared.treeMaker.Assign(
+                        shared.treeMaker.Ident(shared.names.fromString(Constants.RESULT_VAR_NAME)),
                         shared.treeMaker.Literal(TypeTag.BOT, null))));
         current.add(shared.treeMaker
                 .Exec(shared.treeMaker.Assign(shared.treeMaker.Ident(shared.names.fromString(Constants.STEP_VAR_NAME)),
@@ -122,13 +123,16 @@ public class GeneratorTransformer extends JCTree.Visitor {
                         shared.treeMaker.Ident(shared.names.fromString(Constants.RESULT_VAR_NAME)), expr));
     }
 
+    private JCTree.JCExpressionStatement createSetStep(int id) {
+        return shared.treeMaker
+                .Exec(shared.treeMaker.Assign(shared.treeMaker.Ident(shared.names.fromString(Constants.STEP_VAR_NAME)),
+                        shared.treeMaker.Literal(TypeTag.INT, id)));
+    }
+
     private void stepBranch(JCTree.JCExpression stepExpr) {
         current.add(createAssignResult(stepExpr));
-        shared.treeMaker
-                .Exec(shared.treeMaker.Assign(shared.treeMaker.Ident(shared.names.fromString(Constants.STEP_VAR_NAME)),
-                        shared.treeMaker.Literal(TypeTag.INT, shared.getNextId())))
-                .accept(this);
-        shared.treeMaker.Return(null).accept(this);
+        current.add(createSetStep(shared.getNextId()));
+        current.add(shared.treeMaker.Return(null));
 
         nextBranch();
     }
@@ -150,11 +154,10 @@ public class GeneratorTransformer extends JCTree.Visitor {
                     List.of(shared.stepType)),
                     stepAllExpr).accept(sub);
 
-            shared.treeMaker
+            sub.current.add(shared.treeMaker
                     .Exec(shared.treeMaker.Assign(
                             shared.treeMaker.Ident(shared.names.fromString(Constants.STEP_VAR_NAME)),
-                            shared.treeMaker.Literal(TypeTag.INT, shared.getNextId())))
-                    .accept(sub);
+                            shared.treeMaker.Literal(TypeTag.INT, shared.getNextId()))));
 
             callBranch(current, sub.nextBranch());
 
@@ -199,22 +202,14 @@ public class GeneratorTransformer extends JCTree.Visitor {
         if (thenStepped || elseStepped) {
             int nextId = nextBranch();
 
-            if (thenStepped) {
-                callBranch(thenLastBuf, nextId);
-            }
+            callBranch(thenLastBuf, nextId);
 
-            if (elseStepped && elseLastBuf != null) {
+            if (elseLastBuf != null) {
                 callBranch(elseLastBuf, nextId);
             }
-
-            workCurrent.add(ifStatement);
-
-            if (!thenStepped || !elseStepped) {
-                callBranch(workCurrent, nextId);
-            }
-        } else {
-            workCurrent.add(ifStatement);
         }
+
+        workCurrent.add(ifStatement);
     }
 
     private void doConditionalLoop(JCTree.JCExpression cond, JCTree.JCStatement body) {
@@ -333,5 +328,16 @@ public class GeneratorTransformer extends JCTree.Visitor {
         if (that instanceof JCTree.JCStatement statement) {
             current.add(statement);
         }
+    }
+
+    @Override
+    public void visitReturn(JCTree.JCReturn that) {
+        if (that.expr != null) {
+            super.visitReturn(that);
+            return;
+        }
+
+        current.add(createSetStep(Constants.GENERATOR_STEP_FINISH));
+        current.add(shared.treeMaker.Return(null));
     }
 }
