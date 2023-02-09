@@ -22,7 +22,7 @@ class Example {
 }
 ```
 
-Annotation processor processes it and generate exploded code below. Note illegal names used to prevent variable name collision.
+Annotation processor generates complex state machine like below. Note illegal names are used to prevent variable name collision.
 ```java
 @Generator
 public Iterator<Integer> gen(Iterator<Integer> iter2) {
