@@ -214,22 +214,15 @@ public class GeneratorTransformer extends Visitor {
     }
 
     private void doConditionalLoop(JCExpression cond, JCStatement body) {
-        ListBuffer<JCStatement> workCurrent = current;
-
         ListBuffer<JCStatement> bodyBuf = new ListBuffer<>();
         ListBuffer<JCStatement> bodyEndBuf = withScope(bodyBuf, body::accept);
 
         if (bodyBuf != bodyEndBuf) {
-            int nextId = nextBranch();
-
-            callBranch(workCurrent, nextId);
-
-            current.add(shared.treeMaker.WhileLoop(cond, shared.treeMaker.Block(0, bodyBuf.toList())));
-
-            callBranch(bodyEndBuf, nextId);
-        } else {
-            current.add(shared.treeMaker.WhileLoop(cond, shared.treeMaker.Block(0, bodyBuf.toList())));
+            callBranch(current, shared.getNextId());
+            callBranch(bodyEndBuf, nextBranch());
         }
+
+        current.add(shared.treeMaker.WhileLoop(cond, shared.treeMaker.Block(0, bodyBuf.toList())));
     }
 
     @Override
@@ -270,7 +263,10 @@ public class GeneratorTransformer extends Visitor {
             }
 
             ListBuffer<JCStatement> buf = new ListBuffer<>();
-            buf.append(that.body);
+            if (that.body != null) {
+                buf.append(that.body);
+            }
+
             buf.addAll(that.step);
 
             sub.doConditionalLoop(that.cond, shared.treeMaker.Block(0, buf.toList()));
@@ -343,57 +339,9 @@ public class GeneratorTransformer extends Visitor {
     }
 
     @Override
-    public void visitAnnotatedType(JCAnnotatedType that) {
-        // TODO Auto-generated method stub
-        super.visitAnnotatedType(that);
-    }
-
-    @Override
-    public void visitAnnotation(JCAnnotation that) {
-        // TODO Auto-generated method stub
-        super.visitAnnotation(that);
-    }
-
-    @Override
-    public void visitApply(JCMethodInvocation that) {
-        // TODO Auto-generated method stub
-        super.visitApply(that);
-    }
-
-    @Override
-    public void visitAssert(JCAssert that) {
-        // TODO Auto-generated method stub
-        super.visitAssert(that);
-    }
-
-    @Override
-    public void visitAssign(JCAssign that) {
-        // TODO Auto-generated method stub
-        super.visitAssign(that);
-    }
-
-    @Override
-    public void visitAssignop(JCAssignOp that) {
-        // TODO Auto-generated method stub
-        super.visitAssignop(that);
-    }
-
-    @Override
-    public void visitBinary(JCBinary that) {
-        // TODO Auto-generated method stub
-        super.visitBinary(that);
-    }
-
-    @Override
     public void visitBindingPattern(JCBindingPattern that) {
         // TODO Auto-generated method stub
         super.visitBindingPattern(that);
-    }
-
-    @Override
-    public void visitBreak(JCBreak that) {
-        // TODO Auto-generated method stub
-        super.visitBreak(that);
     }
 
     @Override
@@ -409,177 +357,28 @@ public class GeneratorTransformer extends Visitor {
     }
 
     @Override
-    public void visitClassDef(JCClassDecl that) {
-        // TODO Auto-generated method stub
-        super.visitClassDef(that);
-    }
-
-    @Override
-    public void visitConditional(JCConditional that) {
-        // TODO Auto-generated method stub
-        super.visitConditional(that);
-    }
-
-    @Override
     public void visitContinue(JCContinue that) {
         // TODO Auto-generated method stub
         super.visitContinue(that);
     }
 
     @Override
-    public void visitDefaultCaseLabel(JCDefaultCaseLabel that) {
-        // TODO Auto-generated method stub
-        super.visitDefaultCaseLabel(that);
-    }
-
-    @Override
     public void visitDoLoop(JCDoWhileLoop that) {
-        // TODO Auto-generated method stub
-        super.visitDoLoop(that);
-    }
+        ListBuffer<JCStatement> bodyBuf = new ListBuffer<>();
+        ListBuffer<JCStatement> bodyEndBuf = withScope(bodyBuf, that.body::accept);
 
-    @Override
-    public void visitErroneous(JCErroneous that) {
-        // TODO Auto-generated method stub
-        super.visitErroneous(that);
-    }
+        if (bodyBuf != bodyEndBuf) {
+            callBranch(current, shared.getNextId());
+            callBranch(bodyEndBuf, nextBranch());
+        }
 
-    @Override
-    public void visitExports(JCExports that) {
-        // TODO Auto-generated method stub
-        super.visitExports(that);
-    }
-
-    @Override
-    public void visitGuardPattern(JCGuardPattern that) {
-        // TODO Auto-generated method stub
-        super.visitGuardPattern(that);
-    }
-
-    @Override
-    public void visitIdent(JCIdent that) {
-        // TODO Auto-generated method stub
-        super.visitIdent(that);
-    }
-
-    @Override
-    public void visitImport(JCImport that) {
-        // TODO Auto-generated method stub
-        super.visitImport(that);
-    }
-
-    @Override
-    public void visitIndexed(JCArrayAccess that) {
-        // TODO Auto-generated method stub
-        super.visitIndexed(that);
-    }
-
-    @Override
-    public void visitLabelled(JCLabeledStatement that) {
-        // TODO Auto-generated method stub
-        super.visitLabelled(that);
-    }
-
-    @Override
-    public void visitLambda(JCLambda that) {
-        // TODO Auto-generated method stub
-        super.visitLambda(that);
-    }
-
-    @Override
-    public void visitLetExpr(LetExpr that) {
-        // TODO Auto-generated method stub
-        super.visitLetExpr(that);
-    }
-
-    @Override
-    public void visitLiteral(JCLiteral that) {
-        // TODO Auto-generated method stub
-        super.visitLiteral(that);
-    }
-
-    @Override
-    public void visitMethodDef(JCMethodDecl that) {
-        // TODO Auto-generated method stub
-        super.visitMethodDef(that);
-    }
-
-    @Override
-    public void visitModifiers(JCModifiers that) {
-        // TODO Auto-generated method stub
-        super.visitModifiers(that);
-    }
-
-    @Override
-    public void visitModuleDef(JCModuleDecl that) {
-        // TODO Auto-generated method stub
-        super.visitModuleDef(that);
-    }
-
-    @Override
-    public void visitNewArray(JCNewArray that) {
-        // TODO Auto-generated method stub
-        super.visitNewArray(that);
-    }
-
-    @Override
-    public void visitNewClass(JCNewClass that) {
-        // TODO Auto-generated method stub
-        super.visitNewClass(that);
-    }
-
-    @Override
-    public void visitOpens(JCOpens that) {
-        // TODO Auto-generated method stub
-        super.visitOpens(that);
-    }
-
-    @Override
-    public void visitPackageDef(JCPackageDecl that) {
-        // TODO Auto-generated method stub
-        super.visitPackageDef(that);
-    }
-
-    @Override
-    public void visitParens(JCParens that) {
-        // TODO Auto-generated method stub
-        super.visitParens(that);
+        current.add(shared.treeMaker.DoLoop(shared.treeMaker.Block(0, bodyBuf.toList()), that.cond));
     }
 
     @Override
     public void visitParenthesizedPattern(JCParenthesizedPattern that) {
         // TODO Auto-generated method stub
         super.visitParenthesizedPattern(that);
-    }
-
-    @Override
-    public void visitProvides(JCProvides that) {
-        // TODO Auto-generated method stub
-        super.visitProvides(that);
-    }
-
-    @Override
-    public void visitReference(JCMemberReference that) {
-        // TODO Auto-generated method stub
-        super.visitReference(that);
-    }
-
-    @Override
-    public void visitRequires(JCRequires that) {
-        // TODO Auto-generated method stub
-        super.visitRequires(that);
-    }
-
-    @Override
-    public void visitSelect(JCFieldAccess that) {
-        // TODO Auto-generated method stub
-        super.visitSelect(that);
-    }
-
-    @Override
-    public void visitSkip(JCSkip that) {
-        // TODO Auto-generated method stub
-        super.visitSkip(that);
     }
 
     @Override
@@ -601,98 +400,8 @@ public class GeneratorTransformer extends Visitor {
     }
 
     @Override
-    public void visitThrow(JCThrow that) {
-        // TODO Auto-generated method stub
-        super.visitThrow(that);
-    }
-
-    @Override
-    public void visitTopLevel(JCCompilationUnit that) {
-        // TODO Auto-generated method stub
-        super.visitTopLevel(that);
-    }
-
-    @Override
     public void visitTry(JCTry that) {
         // TODO Auto-generated method stub
         super.visitTry(that);
-    }
-
-    @Override
-    public void visitTypeApply(JCTypeApply that) {
-        // TODO Auto-generated method stub
-        super.visitTypeApply(that);
-    }
-
-    @Override
-    public void visitTypeArray(JCArrayTypeTree that) {
-        // TODO Auto-generated method stub
-        super.visitTypeArray(that);
-    }
-
-    @Override
-    public void visitTypeBoundKind(TypeBoundKind that) {
-        // TODO Auto-generated method stub
-        super.visitTypeBoundKind(that);
-    }
-
-    @Override
-    public void visitTypeCast(JCTypeCast that) {
-        // TODO Auto-generated method stub
-        super.visitTypeCast(that);
-    }
-
-    @Override
-    public void visitTypeIdent(JCPrimitiveTypeTree that) {
-        // TODO Auto-generated method stub
-        super.visitTypeIdent(that);
-    }
-
-    @Override
-    public void visitTypeIntersection(JCTypeIntersection that) {
-        // TODO Auto-generated method stub
-        super.visitTypeIntersection(that);
-    }
-
-    @Override
-    public void visitTypeParameter(JCTypeParameter that) {
-        // TODO Auto-generated method stub
-        super.visitTypeParameter(that);
-    }
-
-    @Override
-    public void visitTypeTest(JCInstanceOf that) {
-        // TODO Auto-generated method stub
-        super.visitTypeTest(that);
-    }
-
-    @Override
-    public void visitTypeUnion(JCTypeUnion that) {
-        // TODO Auto-generated method stub
-        super.visitTypeUnion(that);
-    }
-
-    @Override
-    public void visitUnary(JCUnary that) {
-        // TODO Auto-generated method stub
-        super.visitUnary(that);
-    }
-
-    @Override
-    public void visitUses(JCUses that) {
-        // TODO Auto-generated method stub
-        super.visitUses(that);
-    }
-
-    @Override
-    public void visitWildcard(JCWildcard that) {
-        // TODO Auto-generated method stub
-        super.visitWildcard(that);
-    }
-
-    @Override
-    public void visitYield(JCYield that) {
-        // TODO Auto-generated method stub
-        super.visitYield(that);
     }
 }
