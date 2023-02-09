@@ -21,7 +21,7 @@ import javax.tools.Diagnostic.Kind;
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.tree.TreeMaker;
-import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Names;
@@ -69,8 +69,8 @@ public class GeneratorProcessor extends AbstractProcessor {
         names = Names.instance(cx);
     }
 
-    private JCTree.JCExpression extractIteratorType(JCTree.JCMethodDecl method) {
-        if (method.restype instanceof JCTree.JCTypeApply returnType) {
+    private JCExpression extractIteratorType(JCMethodDecl method) {
+        if (method.restype instanceof JCTypeApply returnType) {
             return returnType.arguments.head;
         }
 
@@ -78,10 +78,10 @@ public class GeneratorProcessor extends AbstractProcessor {
                 names.fromString("Object"));
     }
 
-    private void processMethod(JCTree.JCMethodDecl method) {
+    private void processMethod(JCMethodDecl method) {
         messager.printMessage(Kind.NOTE, "before method: " + method);
 
-        JCTree.JCExpression iteratorType = extractIteratorType(method);
+        JCExpression iteratorType = extractIteratorType(method);
 
         GeneratorBuilder builder = new GeneratorBuilder(cx, iteratorType);
 

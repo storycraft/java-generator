@@ -15,8 +15,8 @@ import javax.annotation.Nullable;
 import com.sun.source.tree.CaseTree.CaseKind;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.tree.TreeMaker;
-import com.sun.tools.javac.tree.JCTree.Tag;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
@@ -29,13 +29,13 @@ public class GeneratorBuilder {
     private TreeMaker treeMaker;
     private Names names;
 
-    private JCTree.JCVariableDecl resultDecl;
-    private JCTree.JCVariableDecl stepDecl;
+    private JCVariableDecl resultDecl;
+    private JCVariableDecl stepDecl;
 
-    private JCTree.JCMethodDecl hasNextDecl;
-    private JCTree.JCMethodDecl nextDecl;
+    private JCMethodDecl hasNextDecl;
+    private JCMethodDecl nextDecl;
 
-    public GeneratorBuilder(Context cx, JCTree.JCExpression stepType) {
+    public GeneratorBuilder(Context cx, JCExpression stepType) {
         this.treeMaker = TreeMaker.instance(cx);
         this.names = Names.instance(cx);
 
@@ -43,10 +43,10 @@ public class GeneratorBuilder {
         this.stepDecl = createField(Constants.STEP_VAR_NAME, treeMaker.TypeIdent(TypeTag.INT),
                 treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_START));
 
-        JCTree.JCStatement callPeekStatement = treeMaker.Exec(treeMaker.Apply(List.nil(),
+        JCStatement callPeekStatement = treeMaker.Exec(treeMaker.Apply(List.nil(),
                 treeMaker.Ident(names.fromString(Constants.PEEK_METHOD_NAME)), List.nil()));
 
-        JCTree.JCExpression nullExpr = treeMaker.Literal(TypeTag.BOT, null);
+        JCExpression nullExpr = treeMaker.Literal(TypeTag.BOT, null);
 
         this.hasNextDecl = createMethod(
                 treeMaker.Modifiers(Flags.PUBLIC, List.of(createOverride())),
@@ -99,27 +99,27 @@ public class GeneratorBuilder {
                         treeMaker.Return(treeMaker.Ident(resTempName)))));
     }
 
-    private JCTree.JCVariableDecl createField(String name, JCTree.JCExpression varType) {
+    private JCVariableDecl createField(String name, JCExpression varType) {
         return createField(name, varType, null);
     }
 
-    private JCTree.JCVariableDecl createField(String name, JCTree.JCExpression varType,
-            @Nullable JCTree.JCExpression init) {
+    private JCVariableDecl createField(String name, JCExpression varType,
+            @Nullable JCExpression init) {
         return treeMaker.VarDef(treeMaker.Modifiers(Flags.PRIVATE), names.fromString(name), varType, init);
     }
 
-    private JCTree.JCAnnotation createOverride() {
+    private JCAnnotation createOverride() {
         return treeMaker.Annotation(TreeMakerUtil.createClassName(
                 treeMaker,
                 names, "java", "lang", "Override"),
                 List.nil());
     }
 
-    private JCTree.JCMethodDecl createMethod(
-            JCTree.JCModifiers mods,
-            JCTree.JCExpression retType,
+    private JCMethodDecl createMethod(
+            JCModifiers mods,
+            JCExpression retType,
             String name,
-            JCTree.JCBlock block) {
+            JCBlock block) {
         return treeMaker.MethodDef(
                 mods,
                 names.fromString(name),
@@ -131,21 +131,21 @@ public class GeneratorBuilder {
                 null);
     }
 
-    public JCTree.JCNewClass build(GeneratorMap map) {
+    public JCNewClass build(GeneratorMap map) {
         ListBuffer<JCTree> iteratorBuf = new ListBuffer<>();
         iteratorBuf.add(resultDecl);
         iteratorBuf.add(stepDecl);
 
-        for (Entry<Name, JCTree.JCExpression> entry : map.variables.entrySet()) {
+        for (Entry<Name, JCExpression> entry : map.variables.entrySet()) {
             iteratorBuf
                     .add(treeMaker.VarDef(treeMaker.Modifiers(Flags.PRIVATE), entry.getKey(),
                             entry.getValue(), null));
         }
 
-        ListBuffer<JCTree.JCCase> peekCases = new ListBuffer<>();
+        ListBuffer<JCCase> peekCases = new ListBuffer<>();
 
         for (GeneratorBranch branch : map.branches) {
-            JCTree.JCMethodDecl methodDecl = treeMaker.MethodDef(treeMaker.Modifiers(Flags.PRIVATE),
+            JCMethodDecl methodDecl = treeMaker.MethodDef(treeMaker.Modifiers(Flags.PRIVATE),
                     names.fromString(Constants.BRANCH_METHOD_PREFIX + branch.id),
                     treeMaker.TypeIdent(TypeTag.VOID), List.nil(), List.nil(), List.nil(),
                     treeMaker.Block(0, branch.statements.toList()), null);
@@ -175,7 +175,7 @@ public class GeneratorBuilder {
 
         Name throwableVar = names.fromString("t");
 
-        JCTree.JCTry peekTryWrapper = treeMaker.Try(
+        JCTry peekTryWrapper = treeMaker.Try(
                 treeMaker.Block(0,
                         List.of(treeMaker.Switch(treeMaker.Ident(stepDecl.name),
                                 peekCases.toList()))),
@@ -193,7 +193,7 @@ public class GeneratorBuilder {
                                 treeMaker.Throw(treeMaker.Ident(throwableVar)))))),
                 null);
 
-        JCTree.JCMethodDecl peekDecl = createMethod(
+        JCMethodDecl peekDecl = createMethod(
                 treeMaker.Modifiers(Flags.PRIVATE),
                 treeMaker.TypeIdent(TypeTag.VOID),
                 Constants.PEEK_METHOD_NAME,
@@ -210,7 +210,7 @@ public class GeneratorBuilder {
                 buildIteratorDecl(iteratorBuf));
     }
 
-    private JCTree.JCClassDecl buildIteratorDecl(ListBuffer<JCTree> buf) {
+    private JCClassDecl buildIteratorDecl(ListBuffer<JCTree> buf) {
         buf.add(hasNextDecl);
         buf.add(nextDecl);
 
