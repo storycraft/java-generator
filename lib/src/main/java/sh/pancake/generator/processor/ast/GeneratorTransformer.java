@@ -82,6 +82,9 @@ public class GeneratorTransformer extends JCTree.Visitor {
     public GeneratorMap finish() {
         finishSub();
         current.add(shared.treeMaker
+                .Exec(shared.treeMaker.Assign(shared.treeMaker.Ident(shared.names.fromString(Constants.RESULT_VAR_NAME)),
+                        shared.treeMaker.Literal(TypeTag.BOT, null))));
+        current.add(shared.treeMaker
                 .Exec(shared.treeMaker.Assign(shared.treeMaker.Ident(shared.names.fromString(Constants.STEP_VAR_NAME)),
                         shared.treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_FINISH))));
 
