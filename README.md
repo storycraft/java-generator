@@ -111,9 +111,6 @@ public Iterator<Integer> gen(Iterator<Integer> iter2) {
 ```
 
 ## TODO
-Syntax supports
-- [x] step
-- [x] stepAll
 - [x] for
 - [x] foreach
 - [x] if
