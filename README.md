@@ -61,34 +61,34 @@ public Iterator<Integer> gen(Iterator<Integer> iter2) {
         private void 2() {
             try {
                 switch (1) {
+
                 case 1: {
-                        b1();
-                        return;
-                    }
+                    b1();
+                    return;
+                }
 
-                  case 2: {
-                        b2();
-                        return;
-                    }
+                case 2: {
+                    b2();
+                    return;
+                }
 
-                  case 3: {
-                        b3();
-                        return;
-                    }
+                case 3: {
+                    b3();
+                    return;
+                }
 
-                  case 0: {
-                        return;
-                    }
+                case 0: {
+                    return;
+                }
 
-                  default:
-                      throw new java.lang.RuntimeException("Unreachable generator step");
-
-                  }
-              } catch (java.lang.Throwable t) {
-                  1 = 0;
-                  throw t;
-              }
-          }
+                default:
+                    throw new java.lang.RuntimeException("Unreachable generator step");
+                }
+            } catch (java.lang.Throwable t) {
+                1 = 0;
+                throw t;
+            }
+        }
 
         @java.lang.Override
         public boolean hasNext() {
