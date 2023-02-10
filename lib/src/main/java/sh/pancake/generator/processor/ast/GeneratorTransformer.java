@@ -60,6 +60,9 @@ public class GeneratorTransformer extends Visitor {
 
     private void finishSub() {
         for (JCVariableDecl variable : scopeVariables.values()) {
+            genClass.fields.put(variable.name, alloc.treeMaker.VarDef(alloc.treeMaker.Modifiers(Flags.PRIVATE),
+                    variable.name, variable.vartype, null));
+
             if (variable.vartype instanceof JCPrimitiveTypeTree) {
                 continue;
             }
@@ -68,8 +71,6 @@ public class GeneratorTransformer extends Visitor {
                     alloc.treeMaker.Ident(variable.name),
                     alloc.treeMaker.Literal(TypeTag.BOT, null))));
         }
-
-        genClass.fields.putAll(scopeVariables);
     }
 
     private JCVariableDecl createLocalField(JCExpression type, @Nullable JCExpression init) {
@@ -171,14 +172,14 @@ public class GeneratorTransformer extends Visitor {
 
         for (GeneratorBranch branch : subClass.branches) {
             genClass.methods.add(alloc.treeMaker.MethodDef(
-                alloc.treeMaker.Modifiers(Flags.PRIVATE),
-                branch.name,
-                alloc.treeMaker.TypeIdent(TypeTag.VOID),
-                List.nil(),
-                List.nil(),
-                List.nil(),
-                alloc.treeMaker.Block(0, branch.statements.toList()),
-                null));
+                    alloc.treeMaker.Modifiers(Flags.PRIVATE),
+                    branch.name,
+                    alloc.treeMaker.TypeIdent(TypeTag.VOID),
+                    List.nil(),
+                    List.nil(),
+                    List.nil(),
+                    alloc.treeMaker.Block(0, branch.statements.toList()),
+                    null));
         }
 
         return alloc.treeMaker.Block(0, List.of(
@@ -396,6 +397,7 @@ public class GeneratorTransformer extends Visitor {
 
     @Override
     public void visitTry(JCTry that) {
-        current.add(alloc.treeMaker.Try(that.resources, withInnerGen(that.body::accept), that.catchers, that.finalizer));
+        current.add(
+                alloc.treeMaker.Try(that.resources, withInnerGen(that.body::accept), that.catchers, that.finalizer));
     }
 }

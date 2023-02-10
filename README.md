@@ -40,7 +40,7 @@ public Iterator<Integer> gen(Iterator<Integer> iter2) {
         private int @1 = 1;
         private java.util.Iterator<Integer> @4;
         private Integer @2;
-        int i = 0;
+        private int i;
         private int @3 = 6;
 
         private void b6() {
