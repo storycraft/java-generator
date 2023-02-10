@@ -59,6 +59,7 @@ public class IteratorBuilder {
         iteratorBuf.add(genClass.resultField);
         iteratorBuf.add(genClass.stateField);
         iteratorBuf.addAll(genClass.fields.values());
+        iteratorBuf.addAll(genClass.methods);
 
         JCModifiers privateModifiers = treeMaker.Modifiers(Flags.PRIVATE);
         JCPrimitiveTypeTree voidType = treeMaker.TypeIdent(TypeTag.VOID);

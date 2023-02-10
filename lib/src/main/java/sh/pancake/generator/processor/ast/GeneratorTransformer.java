@@ -11,6 +11,7 @@ import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
+import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.*;
@@ -168,7 +169,17 @@ public class GeneratorTransformer extends Visitor {
         genClass.fields.put(subClass.stateField.name, subClass.stateField);
         genClass.fields.putAll(subClass.fields);
 
-        genClass.branches.addAll(subClass.branches);
+        for (GeneratorBranch branch : subClass.branches) {
+            genClass.methods.add(alloc.treeMaker.MethodDef(
+                alloc.treeMaker.Modifiers(Flags.PRIVATE),
+                branch.name,
+                alloc.treeMaker.TypeIdent(TypeTag.VOID),
+                List.nil(),
+                List.nil(),
+                List.nil(),
+                alloc.treeMaker.Block(0, branch.statements.toList()),
+                null));
+        }
 
         return alloc.treeMaker.Block(0, List.of(
                 subClass.createPeekStatement(alloc),

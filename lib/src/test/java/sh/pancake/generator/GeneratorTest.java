@@ -26,12 +26,16 @@ public class GeneratorTest {
             step(a++);
         }
 
-        for (int i = 0; i < 5; i++) {
-            
-        }
+        try {
+            for (int i = 0; i < 5; i++) {
 
-        for (int i = 0; i < 5; i++) {
-            step(i);
+            }
+
+            for (int i = 0; i < 5; i++) {
+                step(i);
+            }
+        } catch (Exception e) {
+
         }
 
         a += 2;

@@ -25,6 +25,7 @@ public class GeneratorClass {
 
     public final Map<Name, JCVariableDecl> fields;
 
+    public final Collection<JCMethodDecl> methods;
     public final Collection<GeneratorBranch> branches;
 
     public GeneratorClass(ClassMemberAlloc alloc, JCExpression resultType) {
@@ -34,6 +35,7 @@ public class GeneratorClass {
                 alloc.treeMaker.Literal(TypeTag.INT, alloc.getNextBranchId()));
 
         this.fields = new HashMap<>();
+        this.methods = new ArrayList<>();
         this.branches = new ArrayList<>();
     }
 
