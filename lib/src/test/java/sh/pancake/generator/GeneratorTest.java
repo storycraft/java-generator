@@ -71,8 +71,11 @@ public class GeneratorTest {
             }
         } while (i > 0 && i < 10);
 
-        // Yield every elements in iter2
-        stepAll(iter2);
+        try {
+            stepAll(iter2);
+        } catch (Exception e) {
+            System.err.println("Error: " + e);
+        }
     }
 
     @Test

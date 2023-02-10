@@ -13,11 +13,20 @@ import sh.pancake.generator.Generator;
 class Example {
     @Generator
     public Iterator<Integer> gen(Iterator<Integer> iter2) {
-        // Yield 1
-        step(1);
+        int i = 0;
 
-        // Yield every elements in iter2
-        stepAll(iter2);
+        do {
+            i++;
+            if (i % 2 == 0) {
+                step(i);
+            }
+        } while (i > 0 && i < 10);
+
+        try {
+            stepAll(iter2);
+        } catch (Exception e) {
+            System.err.println("Error: " + e);
+        }
     }
 }
 ```
@@ -26,84 +35,155 @@ Annotation processor generates complex state machine like below. Note illegal na
 ```java
 @Generator
 public Iterator<Integer> gen(Iterator<Integer> iter2) {
-    return new java.util.Iterator<Integer>(){
-        
-        // Result value
-        private Integer 0;
+    return new java.util.Iterator<Integer> () {
+        private Integer @0;
+        private int @1 = 1;
+        private java.util.Iterator<Integer> @4;
+        private Integer @2;
+        int i = 0;
+        private int @3 = 6;
 
-        // State
-        private int 1 = 1;
+        private void b6() {
+            @4 = iter2;
+            b7();
+        }
 
-        // Temporary iterator field
-        private java.util.Iterator<Integer> @0;
+        private void b7() {
+            if (@4.hasNext()) {
+                @2 = @4.next();
+                return;
+            }
+            @4 = null;
+            @2 = null;
+            @3 = 0;
+        }
 
         private void b1() {
-            0 = 1;
-            1 = 2;
-            return;
+            i = 0;
+            b4();
+            if (@0 != null) return;
+            b5();
         }
 
         private void b2() {
-            @0 = iter2;
-            1 = 3;
             b3();
         }
 
         private void b3() {
-            if (@0.hasNext()) {
-                0 = @0.next();
-                return;
-            }
-            @0 = null;
-            1 = 0;
+            b5();
         }
 
-        private void 2() {
+        private void b4() {
+            i++;
+            if (i % 2 == 0) {
+                @0 = i;
+                @1 = 2;
+                return;
+            }
+        }
+
+        private void b5() {
+            while (i > 0 && i < 10) {
+                b4();
+                if (@0 != null) return;
+            }
             try {
-                switch (1) {
+                try {
+                    switch (@3) {
+                        case 6:
+                            {
+                                b6();
+                                break;
+                            }
 
-                case 1: {
-                    b1();
+                        case 7:
+                            {
+                                b7();
+                                break;
+                            }
+
+                        case 0:
+                            break;
+
+                        default:
+                            throw new java.lang.RuntimeException("Unreachable generator step");
+
+                    }
+                } catch (java.lang.Throwable t) {
+                    @3 = 0;
+                    throw t;
+                }
+                if (@3 != 0) {
+                    @0 = @2;
                     return;
                 }
+            } catch (Exception e) {
+                System.err.println("Error: " + e);
+            }
+            @0 = null;
+            @1 = 0;
+        }
 
-                case 2: {
-                    b2();
-                    return;
-                }
+        private void b8() {
+            try {
+                switch (@1) {
+                    case 1:
+                        {
+                            b1();
+                            break;
+                        }
 
-                case 3: {
-                    b3();
-                    return;
-                }
+                    case 2:
+                        {
+                            b2();
+                            break;
+                        }
 
-                case 0: {
-                    return;
-                }
+                    case 3:
+                        {
+                            b3();
+                            break;
+                        }
 
-                default:
-                    throw new java.lang.RuntimeException("Unreachable generator step");
+                    case 4:
+                        {
+                            b4();
+                            break;
+                        }
+
+                    case 5:
+                        {
+                            b5();
+                            break;
+                        }
+
+                    case 0:
+                        break;
+
+                    default:
+                        throw new java.lang.RuntimeException("Unreachable generator step");
+
                 }
             } catch (java.lang.Throwable t) {
-                1 = 0;
+                @1 = 0;
                 throw t;
             }
         }
 
         @java.lang.Override
         public boolean hasNext() {
-            if (0 == null) 2();
-            return 0 != null;
+            if (@0 == null) b8();
+            return @0 != null;
         }
 
         @java.lang.Override
         public Integer next() {
-            if (0 == null) {
-                2();
-                if (0 == null) throw new java.util.NoSuchElementException("Called next on finished generator");
+            if (@0 == null) {
+                b8();
+                if (@0 == null) throw new java.util.NoSuchElementException("Called next on finished generator");
             }
-            Integer res = 0;
-            0 = null;
+            Integer res = @0;
+            @0 = null;
             return res;
         }
     };
