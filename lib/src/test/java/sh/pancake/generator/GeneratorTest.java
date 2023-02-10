@@ -47,7 +47,11 @@ public class GeneratorTest {
     Iterator<Integer> gen2(Iterator<Integer> iter2) {
         step(100);
 
-        stepAll(iter2);
+        try {
+            stepAll(iter2);
+        } catch (Exception e) {
+
+        }
 
         step(200);
     }
@@ -69,7 +73,7 @@ public class GeneratorTest {
 
     @Test
     public void testGenerator() {
-        Iterator<Integer> testGen = gen(gen1());
+        Iterator<Integer> testGen = gen2(gen1());
         while (testGen.hasNext()) {
             System.out.println(testGen.next());
         }

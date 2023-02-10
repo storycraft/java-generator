@@ -385,32 +385,6 @@ public class GeneratorTransformer extends Visitor {
 
     @Override
     public void visitTry(JCTry that) {
-        ListBuffer<JCCatch> catchersBuf = new ListBuffer<>();
-
-        boolean stepped = false;
-        for (JCCatch catcher : that.catchers) {
-            ListBuffer<JCStatement> catcherBuf = new ListBuffer<>();
-            ListBuffer<JCStatement> catcherEndBuf = withScope(catcherBuf, (sub) -> {
-                sub.createLocalField(catcher.param.vartype, null);
-                catcher.body.accept(sub);
-            });
-
-            catchersBuf.add(alloc.treeMaker.Catch(null, null));
-
-            if (catcherBuf != catcherEndBuf) {
-                stepped = true;
-            }
-        }
-
-        ListBuffer<JCStatement> finalizerBuf = null;
-        ListBuffer<JCStatement> finalizerEndBuf = null;
-        if (that.finalizer != null) {
-            finalizerBuf = new ListBuffer<>();
-            finalizerEndBuf = withScope(finalizerBuf, that.finalizer::accept);
-        }
-
-        current.add(alloc.treeMaker.Try(withInnerGen(that.body::accept),
-                catchersBuf.toList(),
-                finalizerBuf != null ? alloc.treeMaker.Block(0, finalizerBuf.toList()) : null));
+        current.add(alloc.treeMaker.Try(that.resources, withInnerGen(that.body::accept), that.catchers, that.finalizer));
     }
 }
