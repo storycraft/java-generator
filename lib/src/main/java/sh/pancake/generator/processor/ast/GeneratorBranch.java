@@ -5,13 +5,16 @@
  */
 package sh.pancake.generator.processor.ast;
 
-import com.sun.tools.javac.tree.JCTree;
-import com.sun.tools.javac.tree.JCTree.*;import com.sun.tools.javac.util.ListBuffer;
+import com.sun.tools.javac.tree.JCTree.*;
+import com.sun.tools.javac.util.ListBuffer;
+import com.sun.tools.javac.util.Name;
 
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
 public class GeneratorBranch {
     public int id;
+
+    public Name name;
     public ListBuffer<JCStatement> statements;
 }

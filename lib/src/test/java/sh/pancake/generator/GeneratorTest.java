@@ -62,7 +62,7 @@ public class GeneratorTest {
 
     @Test
     public void testGenerator() {
-        Iterator<Integer> testGen = gen(gen1());
+        Iterator<Integer> testGen = gen2(gen1());
         while (testGen.hasNext()) {
             System.out.println(testGen.next());
         }
