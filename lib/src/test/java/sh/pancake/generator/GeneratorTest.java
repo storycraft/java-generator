@@ -54,18 +54,14 @@ public class GeneratorTest {
 
     @Generator
     public Iterator<Integer> gen(Iterator<Integer> iter2) {
-        // Yield 1
-        try {
-            step(1);
-            step(1);
-            step(1);
+        int i = 0;
 
-            if (true) {
-                throw new RuntimeException();
+        do {
+            i++;
+            if (i % 2 == 0) {
+                step(i);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        } while (i > 0 && i < 10);
 
         // Yield every elements in iter2
         stepAll(iter2);

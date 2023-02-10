@@ -107,6 +107,16 @@ public class GeneratorTransformer extends Visitor {
                         alloc.treeMaker.Literal(TypeTag.INT, id)));
     }
 
+    private JCIf createReturnOnStep() {
+        return alloc.treeMaker.If(
+                alloc.treeMaker.Binary(
+                        Tag.NE,
+                        alloc.treeMaker.Ident(genClass.resultField.name),
+                        alloc.treeMaker.Literal(TypeTag.BOT, null)),
+                alloc.treeMaker.Return(null),
+                null);
+    }
+
     private void stepBranch(JCExpression stepExpr) {
         ListBuffer<JCStatement> buf = current;
 
@@ -211,13 +221,23 @@ public class GeneratorTransformer extends Visitor {
 
         if (bodyBuf != bodyEndBuf) {
             ListBuffer<JCStatement> last = current;
+
+            GeneratorBranch bodyBranch = nextBranch();
+            bodyBranch.statements.addAll(bodyBuf);
+
             GeneratorBranch next = nextBranch();
 
-            last.add(createCallBranchStatement(next));
             bodyEndBuf.add(createCallBranchStatement(next));
+            last.add(createCallBranchStatement(next));
+
+            current.add(alloc.treeMaker.WhileLoop(cond, alloc.treeMaker.Block(0, List.of(
+                alloc.treeMaker.Exec(alloc.treeMaker.Apply(List.nil(), alloc.treeMaker.Ident(bodyBranch.name), List.nil())),
+                createReturnOnStep()
+            ))));
+        } else {
+            current.add(alloc.treeMaker.WhileLoop(cond, alloc.treeMaker.Block(0, bodyBuf.toList())));
         }
 
-        current.add(alloc.treeMaker.WhileLoop(cond, alloc.treeMaker.Block(0, bodyBuf.toList())));
     }
 
     @Override
@@ -338,19 +358,30 @@ public class GeneratorTransformer extends Visitor {
 
         if (bodyBuf != bodyEndBuf) {
             ListBuffer<JCStatement> last = current;
+            GeneratorBranch body = nextBranch();
+
+            last.add(createCallBranchStatement(body));
+
+            current.addAll(bodyBuf);
+
             GeneratorBranch next = nextBranch();
 
+            last.add(createReturnOnStep());
             last.add(createCallBranchStatement(next));
+
             bodyEndBuf.add(createCallBranchStatement(next));
+
+            current.add(alloc.treeMaker.WhileLoop(
+                    that.cond,
+                    alloc.treeMaker.Block(0, List.of(
+                        alloc.treeMaker.Exec(alloc.treeMaker.Apply(
+                        List.nil(),
+                        alloc.treeMaker.Ident(body.name),
+                        List.nil())),
+                        createReturnOnStep()))));
+        } else {
+            current.add(alloc.treeMaker.DoLoop(alloc.treeMaker.Block(0, bodyBuf.toList()), that.cond));
         }
-
-        current.add(alloc.treeMaker.DoLoop(alloc.treeMaker.Block(0, bodyBuf.toList()), that.cond));
-    }
-
-    @Override
-    public void visitParenthesizedPattern(JCParenthesizedPattern that) {
-        // TODO Auto-generated method stub
-        super.visitParenthesizedPattern(that);
     }
 
     @Override
@@ -372,8 +403,32 @@ public class GeneratorTransformer extends Visitor {
 
     @Override
     public void visitTry(JCTry that) {
+        ListBuffer<JCCatch> catchersBuf = new ListBuffer<>();
+
+        boolean stepped = false;
+        for (JCCatch catcher : that.catchers) {
+            ListBuffer<JCStatement> catcherBuf = new ListBuffer<>();
+            ListBuffer<JCStatement> catcherEndBuf = withScope(catcherBuf, (sub) -> {
+                sub.createLocalField(catcher.param.vartype, null);
+                catcher.body.accept(sub);
+            });
+
+            catchersBuf.add(alloc.treeMaker.Catch(null, null));
+
+            if (catcherBuf != catcherEndBuf) {
+                stepped = true;
+            }
+        }
+
+        ListBuffer<JCStatement> finalizerBuf = null;
+        ListBuffer<JCStatement> finalizerEndBuf = null;
+        if (that.finalizer != null) {
+            finalizerBuf = new ListBuffer<>();
+            finalizerEndBuf = withScope(finalizerBuf, that.finalizer::accept);
+        }
+
         current.add(alloc.treeMaker.Try(withInnerGen(that.body::accept),
-                that.catchers,
-                that.finalizer));
+                catchersBuf.toList(),
+                finalizerBuf != null ? alloc.treeMaker.Block(0, finalizerBuf.toList()) : null));
     }
 }
