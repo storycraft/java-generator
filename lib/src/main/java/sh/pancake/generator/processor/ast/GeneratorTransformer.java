@@ -215,7 +215,7 @@ public class GeneratorTransformer extends Visitor {
         workCurrent.add(ifStatement);
     }
 
-    private void doConditionalLoop(JCExpression cond, JCStatement body) {
+    private void doConditionalLoop(JCExpression cond, JCStatement body, boolean deferredCond) {
         ListBuffer<JCStatement> bodyBuf = new ListBuffer<>();
         ListBuffer<JCStatement> bodyEndBuf = withScope(bodyBuf, body::accept);
 
@@ -228,14 +228,24 @@ public class GeneratorTransformer extends Visitor {
             GeneratorBranch next = nextBranch();
 
             bodyEndBuf.add(createCallBranchStatement(next));
+
+            JCExpressionStatement bodyCall = alloc.treeMaker
+                    .Exec(alloc.treeMaker.Apply(List.nil(), alloc.treeMaker.Ident(bodyBranch.name), List.nil()));
+            if (deferredCond) {
+                last.add(bodyCall);
+                last.add(createReturnOnStep());
+            }
             last.add(createCallBranchStatement(next));
 
             current.add(alloc.treeMaker.WhileLoop(cond, alloc.treeMaker.Block(0, List.of(
-                alloc.treeMaker.Exec(alloc.treeMaker.Apply(List.nil(), alloc.treeMaker.Ident(bodyBranch.name), List.nil())),
-                createReturnOnStep()
-            ))));
+                    bodyCall,
+                    createReturnOnStep()))));
         } else {
-            current.add(alloc.treeMaker.WhileLoop(cond, alloc.treeMaker.Block(0, bodyBuf.toList())));
+            if (deferredCond) {
+                current.add(alloc.treeMaker.DoLoop(alloc.treeMaker.Block(0, bodyBuf.toList()), cond));
+            } else {
+                current.add(alloc.treeMaker.WhileLoop(cond, alloc.treeMaker.Block(0, bodyBuf.toList())));
+            }
         }
 
     }
@@ -264,7 +274,7 @@ public class GeneratorTransformer extends Visitor {
             that.var.accept(sub);
             sub.doConditionalLoop(hasNextInv, alloc.treeMaker.Block(0, List.of(
                     alloc.treeMaker.Exec(alloc.treeMaker.Assign(alloc.treeMaker.Ident(that.var.name), nextInv)),
-                    that.body)));
+                    that.body)), false);
         });
     }
 
@@ -282,7 +292,7 @@ public class GeneratorTransformer extends Visitor {
 
             buf.addAll(that.step);
 
-            sub.doConditionalLoop(that.cond, alloc.treeMaker.Block(0, buf.toList()));
+            sub.doConditionalLoop(that.cond, alloc.treeMaker.Block(0, buf.toList()), false);
         });
     }
 
@@ -293,7 +303,7 @@ public class GeneratorTransformer extends Visitor {
             return;
         }
 
-        doConditionalLoop(that.cond, that.body);
+        doConditionalLoop(that.cond, that.body, false);
     }
 
     @Override
@@ -353,35 +363,7 @@ public class GeneratorTransformer extends Visitor {
 
     @Override
     public void visitDoLoop(JCDoWhileLoop that) {
-        ListBuffer<JCStatement> bodyBuf = new ListBuffer<>();
-        ListBuffer<JCStatement> bodyEndBuf = withScope(bodyBuf, that.body::accept);
-
-        if (bodyBuf != bodyEndBuf) {
-            ListBuffer<JCStatement> last = current;
-            GeneratorBranch body = nextBranch();
-
-            last.add(createCallBranchStatement(body));
-
-            current.addAll(bodyBuf);
-
-            GeneratorBranch next = nextBranch();
-
-            last.add(createReturnOnStep());
-            last.add(createCallBranchStatement(next));
-
-            bodyEndBuf.add(createCallBranchStatement(next));
-
-            current.add(alloc.treeMaker.WhileLoop(
-                    that.cond,
-                    alloc.treeMaker.Block(0, List.of(
-                        alloc.treeMaker.Exec(alloc.treeMaker.Apply(
-                        List.nil(),
-                        alloc.treeMaker.Ident(body.name),
-                        List.nil())),
-                        createReturnOnStep()))));
-        } else {
-            current.add(alloc.treeMaker.DoLoop(alloc.treeMaker.Block(0, bodyBuf.toList()), that.cond));
-        }
+        doConditionalLoop(that.cond, that.body, true);
     }
 
     @Override
