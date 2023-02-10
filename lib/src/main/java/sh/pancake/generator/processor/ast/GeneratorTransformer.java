@@ -148,6 +148,29 @@ public class GeneratorTransformer extends Visitor {
         return sub.current;
     }
 
+    private JCBlock withInnerGen(Consumer<GeneratorTransformer> consumer) {
+        GeneratorTransformer sub = GeneratorTransformer.createRoot(alloc, genClass.resultField.vartype);
+        consumer.accept(sub);
+
+        GeneratorClass subClass = sub.finish();
+
+        genClass.fields.put(subClass.resultField.name, subClass.resultField);
+        genClass.fields.put(subClass.stateField.name, subClass.stateField);
+        genClass.fields.putAll(subClass.fields);
+
+        genClass.branches.addAll(subClass.branches);
+
+        return alloc.treeMaker.Block(0, List.of(
+                subClass.createPeekStatement(alloc),
+                alloc.treeMaker.If(
+                        alloc.treeMaker.Binary(Tag.NE, alloc.treeMaker.Ident(subClass.stateField.name),
+                                alloc.treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_FINISH)),
+                        alloc.treeMaker.Block(0, List.of(
+                                createAssignResult(alloc.treeMaker.Ident(subClass.resultField.name)),
+                                alloc.treeMaker.Return(null))),
+                        null)));
+    }
+
     @Override
     public void visitIf(JCIf that) {
         ListBuffer<JCStatement> workCurrent = current;
@@ -344,13 +367,13 @@ public class GeneratorTransformer extends Visitor {
 
     @Override
     public void visitSynchronized(JCSynchronized that) {
-        // TODO Auto-generated method stub
-        super.visitSynchronized(that);
+        current.add(alloc.treeMaker.Synchronized(that.lock, withInnerGen(that.body::accept)));
     }
 
     @Override
     public void visitTry(JCTry that) {
-        // TODO Auto-generated method stub
-        super.visitTry(that);
+        current.add(alloc.treeMaker.Try(withInnerGen(that.body::accept),
+                that.catchers,
+                that.finalizer));
     }
 }

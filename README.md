@@ -115,6 +115,7 @@ public Iterator<Integer> gen(Iterator<Integer> iter2) {
 - [x] foreach
 - [x] if
 - [x] while
+- [x] synchronized
 - [ ] do-while
 - [ ] try-catch
 - [ ] try

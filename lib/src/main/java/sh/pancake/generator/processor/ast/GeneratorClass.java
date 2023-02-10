@@ -31,7 +31,7 @@ public class GeneratorClass {
         this.resultField = alloc.createPrivateField(resultType);
         this.stateField = alloc.createPrivateField(
                 alloc.treeMaker.TypeIdent(TypeTag.INT),
-                alloc.treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_START));
+                alloc.treeMaker.Literal(TypeTag.INT, alloc.getNextBranchId()));
 
         this.fields = new HashMap<>();
         this.branches = new ArrayList<>();

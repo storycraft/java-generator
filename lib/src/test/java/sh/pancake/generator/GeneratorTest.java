@@ -27,6 +27,7 @@ public class GeneratorTest {
         }
 
         for (int i = 0; i < 5; i++) {
+            
         }
 
         for (int i = 0; i < 5; i++) {
@@ -54,7 +55,17 @@ public class GeneratorTest {
     @Generator
     public Iterator<Integer> gen(Iterator<Integer> iter2) {
         // Yield 1
-        step(1);
+        try {
+            step(1);
+            step(1);
+            step(1);
+
+            if (true) {
+                throw new RuntimeException();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Yield every elements in iter2
         stepAll(iter2);
@@ -62,7 +73,7 @@ public class GeneratorTest {
 
     @Test
     public void testGenerator() {
-        Iterator<Integer> testGen = gen2(gen1());
+        Iterator<Integer> testGen = gen(gen1());
         while (testGen.hasNext()) {
             System.out.println(testGen.next());
         }

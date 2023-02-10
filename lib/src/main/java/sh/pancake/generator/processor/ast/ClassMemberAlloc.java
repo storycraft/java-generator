@@ -40,6 +40,10 @@ public class ClassMemberAlloc {
         nextMethodId = Constants.GENERATOR_STEP_START;
     }
 
+    public int getNextBranchId() {
+        return nextMethodId;
+    }
+
     public GeneratorBranch createBranch() {
         return new GeneratorBranch(nextMethodId, nextMethodName(), new ListBuffer<>());
     }
