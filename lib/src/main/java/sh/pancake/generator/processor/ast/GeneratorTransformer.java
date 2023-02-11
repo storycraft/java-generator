@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
+import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
@@ -269,7 +270,7 @@ public class GeneratorTransformer extends Visitor {
             current.add(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(varName), that.init)));
         }
 
-        fieldBuffer.fields.add(that);
+        fieldBuffer.fields.add(treeMaker.VarDef(treeMaker.Modifiers(Flags.PRIVATE), varName, that.vartype, null));
     }
 
     @Override

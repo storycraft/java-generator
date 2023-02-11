@@ -38,7 +38,7 @@ public Iterator<Integer> gen(Iterator<Integer> iter2) {
     return new java.util.Iterator<Integer> () {
         private int @0 = 1;
         private int @1 = 0;
-        int i = 0;
+        private int i;
         private java.util.Iterator<Integer> @2;
         private Integer @3;
 
