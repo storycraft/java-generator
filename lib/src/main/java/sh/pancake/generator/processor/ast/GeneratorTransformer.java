@@ -16,7 +16,6 @@ import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
-import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 
 import sh.pancake.generator.processor.TreeMakerUtil;
@@ -260,14 +259,6 @@ public class GeneratorTransformer extends Visitor {
         }
 
         super.visitExec(that);
-    }
-
-    @Override
-    public void visitVarDef(JCVariableDecl that) {
-        Name varName = that.name;
-        if (that.init != null) {
-            current.add(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(varName), that.init)));
-        }
     }
 
     @Override

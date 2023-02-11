@@ -30,7 +30,7 @@ import sh.pancake.generator.Generator;
 import sh.pancake.generator.processor.ast.GeneratorBuilder;
 import sh.pancake.generator.processor.ast.FieldBuffer;
 import sh.pancake.generator.processor.ast.GeneratorTransformer;
-import sh.pancake.generator.processor.ast.VariableMapper;
+import sh.pancake.generator.processor.ast.VariableFieldMapper;
 
 @SupportedAnnotationTypes("sh.pancake.generator.Generator")
 public class GeneratorProcessor extends AbstractProcessor {
@@ -86,7 +86,7 @@ public class GeneratorProcessor extends AbstractProcessor {
         JCExpression iteratorType = extractIteratorType(method);
         FieldBuffer fieldBuffer = new FieldBuffer(cx);
 
-        method.body.accept(new VariableMapper(fieldBuffer));
+        method.body.accept(new VariableFieldMapper(cx, fieldBuffer));
 
         GeneratorTransformer transformer = GeneratorTransformer.createRoot(cx, fieldBuffer, iteratorType);
         method.body.accept(transformer);

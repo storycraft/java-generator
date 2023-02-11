@@ -13,17 +13,21 @@ import javax.annotation.Nullable;
 
 import com.sun.tools.javac.tree.TreeTranslator;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.JCTree.*;
+import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Name;
 
-public class VariableMapper extends TreeTranslator {
+public class VariableFieldMapper extends TreeTranslator {
+    private final TreeMaker treeMaker;
 
     private final FieldBuffer fieldBuffer;
 
     private final LinkedList<Map<Name, Name>> scopeVariableMap;
 
-    public VariableMapper(FieldBuffer fieldBuffer) {
+    public VariableFieldMapper(Context cx, FieldBuffer fieldBuffer) {
+        this.treeMaker = TreeMaker.instance(cx);
         this.fieldBuffer = fieldBuffer;
         this.scopeVariableMap = new LinkedList<>();
     }
@@ -100,8 +104,10 @@ public class VariableMapper extends TreeTranslator {
         super.visitVarDef(tree);
 
         Name converted = getConverted(tree.name);
-        if (converted != null) {
-            tree.name = converted;
+        if (converted != null && tree.init == null) {
+            super.result = treeMaker.at(tree.pos).Exec(treeMaker.Assign(treeMaker.Ident(converted), tree.init));
+        } else {
+            super.result = treeMaker.at(tree.pos).Skip();
         }
     }
 
@@ -121,6 +127,7 @@ public class VariableMapper extends TreeTranslator {
         }
 
         @Override
-        public void visitTree(JCTree that) {}
+        public void visitTree(JCTree that) {
+        }
     }
 }
