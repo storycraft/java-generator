@@ -25,7 +25,7 @@ public class FieldBuffer {
 
     private int nextFieldId;
 
-    public final ListBuffer<JCVariableDecl> fields;
+    private final ListBuffer<JCVariableDecl> fields;
 
     public FieldBuffer(Context cx) {
         treeMaker = TreeMaker.instance(cx);

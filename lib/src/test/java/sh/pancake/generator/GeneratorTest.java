@@ -29,6 +29,8 @@ public class GeneratorTest {
         for (int i = 0; i < 5; i++) {
 
         }
+        
+        String i = "1";
 
         a += 2;
 
