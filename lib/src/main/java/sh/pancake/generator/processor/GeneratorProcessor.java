@@ -27,8 +27,8 @@ import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Names;
 
 import sh.pancake.generator.Generator;
-import sh.pancake.generator.processor.ast.IteratorBuilder;
-import sh.pancake.generator.processor.ast.ClassMemberAlloc;
+import sh.pancake.generator.processor.ast.GeneratorBuilder;
+import sh.pancake.generator.processor.ast.FieldBuffer;
 import sh.pancake.generator.processor.ast.GeneratorTransformer;
 
 @SupportedAnnotationTypes("sh.pancake.generator.Generator")
@@ -83,12 +83,12 @@ public class GeneratorProcessor extends AbstractProcessor {
         messager.printMessage(Kind.NOTE, "before method: " + method);
 
         JCExpression iteratorType = extractIteratorType(method);
-        ClassMemberAlloc alloc = new ClassMemberAlloc(cx);
+        FieldBuffer fieldBuffer = new FieldBuffer(cx);
 
-        GeneratorTransformer transformer = GeneratorTransformer.createRoot(alloc, iteratorType);
+        GeneratorTransformer transformer = GeneratorTransformer.createRoot(cx, fieldBuffer, iteratorType);
         method.body.accept(transformer);
 
-        method.body.stats = List.of(treeMaker.Return(new IteratorBuilder(alloc, transformer.finish()).build()));
+        method.body.stats = List.of(treeMaker.Return(new GeneratorBuilder(cx, fieldBuffer, transformer.finish()).build()));
 
         messager.printMessage(Kind.NOTE, "after method: " + method);
     }

@@ -5,307 +5,213 @@
  */
 package sh.pancake.generator.processor.ast;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
-import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.JCTree.*;
+import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Name;
+import com.sun.tools.javac.util.Names;
 
 import sh.pancake.generator.processor.TreeMakerUtil;
 
 public class GeneratorTransformer extends Visitor {
-    private final ClassMemberAlloc alloc;
+    private final TreeMaker treeMaker;
+    private final Names names;
+    private final FieldBuffer fieldBuffer;
 
-    private final GeneratorClass genClass;
-
+    private final GeneratorBlock block;
     private ListBuffer<JCStatement> current;
-    private Map<Name, JCVariableDecl> scopeVariables;
 
-    private GeneratorTransformer(ClassMemberAlloc alloc, GeneratorClass genClass, ListBuffer<JCStatement> current) {
-        this.alloc = alloc;
-        this.genClass = genClass;
+    private GeneratorTransformer(TreeMaker treeMaker, Names names, FieldBuffer fieldBuffer, JCExpression retType) {
+        this.treeMaker = treeMaker;
+        this.names = names;
+        this.fieldBuffer = fieldBuffer;
 
-        this.current = current;
-        scopeVariables = new HashMap<>();
+        this.block = new GeneratorBlock(fieldBuffer.nextPrivateField(
+                treeMaker.TypeIdent(TypeTag.INT),
+                treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_START)),
+                retType,
+                fieldBuffer.nextPrivateField(
+                        treeMaker.TypeIdent(TypeTag.INT),
+                        treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_FINISH)));
+        this.current = block.nextState().statements;
     }
 
-    public static GeneratorTransformer createRoot(ClassMemberAlloc alloc, JCExpression resultType) {
-        GeneratorClass genClass = new GeneratorClass(alloc, resultType);
-        GeneratorBranch branch = alloc.createBranch();
+    public static GeneratorTransformer createRoot(Context cx, FieldBuffer fieldBuffer, JCExpression retType) {
+        TreeMaker treeMaker = TreeMaker.instance(cx);
+        Names names = Names.instance(cx);
 
-        genClass.branches.add(branch);
-        return new GeneratorTransformer(alloc, genClass, branch.statements);
+        return new GeneratorTransformer(treeMaker, names, fieldBuffer, retType);
     }
 
-    public GeneratorClass finish() {
-        finishSub();
-        current.add(alloc.treeMaker
-                .Exec(alloc.treeMaker.Assign(
-                        alloc.treeMaker.Ident(genClass.resultField.name),
-                        alloc.treeMaker.Literal(TypeTag.BOT, null))));
-        current.add(alloc.treeMaker
-                .Exec(alloc.treeMaker.Assign(alloc.treeMaker.Ident(genClass.stateField.name),
-                        alloc.treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_FINISH))));
+    public GeneratorBlock finish() {
+        current.addAll(createJump(Constants.GENERATOR_STEP_FINISH));
 
-        return genClass;
+        return block;
     }
 
-    private void finishSub() {
-        for (JCVariableDecl variable : scopeVariables.values()) {
-            genClass.fields.put(variable.name, alloc.treeMaker.VarDef(alloc.treeMaker.Modifiers(Flags.PRIVATE),
-                    variable.name, variable.vartype, null));
-
-            if (variable.vartype instanceof JCPrimitiveTypeTree) {
-                continue;
-            }
-
-            current.add(alloc.treeMaker.Exec(alloc.treeMaker.Assign(
-                    alloc.treeMaker.Ident(variable.name),
-                    alloc.treeMaker.Literal(TypeTag.BOT, null))));
-        }
-    }
-
-    private JCVariableDecl createLocalField(JCExpression type, @Nullable JCExpression init) {
-        JCVariableDecl decl = alloc.createPrivateField(type);
-        scopeVariables.put(decl.name, decl);
+    private void withLocalField(JCExpression type, @Nullable JCExpression init, Consumer<JCVariableDecl> consumer) {
+        JCVariableDecl decl = fieldBuffer.nextPrivateField(type);
 
         if (init != null) {
             current.add(
-                    alloc.treeMaker.Exec(alloc.treeMaker.Assign(alloc.treeMaker.Ident(decl.name), init)));
+                    treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(decl.name), init)));
         }
 
-        return decl;
+        consumer.accept(decl);
+
+        if (decl.vartype instanceof JCPrimitiveTypeTree) {
+            return;
+        }
+
+        current.add(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(decl.name), treeMaker.Literal(TypeTag.BOT, null))));
     }
 
-    private JCExpressionStatement createCallBranchStatement(GeneratorBranch branch) {
-        return alloc.treeMaker
-                .Exec(alloc.treeMaker.Apply(List.nil(), alloc.treeMaker.Ident(branch.name), List.nil()));
+    private JCExpressionStatement createAssignStep(int id) {
+        return treeMaker
+                .Exec(treeMaker.Assign(treeMaker.Ident(block.getStateFieldName()),
+                        treeMaker.Literal(TypeTag.INT, id)));
     }
 
-    private GeneratorBranch nextBranch() {
-        GeneratorBranch next = alloc.createBranch();
-        genClass.branches.add(next);
+    private List<JCStatement> createJump(int id) {
+        return List.of(
+                treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(block.getStateFieldName()),
+                        treeMaker.Literal(TypeTag.INT, id))),
+                treeMaker.Break(null));
+    }
+
+    private GeneratorState switchToNextState() {
+        GeneratorState next = block.nextState();
         current = next.statements;
         return next;
     }
 
-    private JCExpressionStatement createAssignResult(JCExpression expr) {
-        return alloc.treeMaker
-                .Exec(alloc.treeMaker.Assign(
-                        alloc.treeMaker.Ident(genClass.resultField.name), expr));
-    }
-
-    private JCExpressionStatement createAssignStep(int id) {
-        return alloc.treeMaker
-                .Exec(alloc.treeMaker.Assign(alloc.treeMaker.Ident(genClass.stateField.name),
-                        alloc.treeMaker.Literal(TypeTag.INT, id)));
-    }
-
-    private JCIf createReturnOnStep() {
-        return alloc.treeMaker.If(
-                alloc.treeMaker.Binary(
-                        Tag.NE,
-                        alloc.treeMaker.Ident(genClass.resultField.name),
-                        alloc.treeMaker.Literal(TypeTag.BOT, null)),
-                alloc.treeMaker.Return(null),
-                null);
-    }
-
-    private void stepBranch(JCExpression stepExpr) {
+    private GeneratorState step(JCExpression stepExpr) {
         ListBuffer<JCStatement> buf = current;
+        GeneratorState next = switchToNextState();
 
-        buf.add(createAssignResult(stepExpr));
-        buf.add(createAssignStep(nextBranch().id));
-        buf.add(alloc.treeMaker.Return(null));
+        buf.add(createAssignStep(next.id));
+        buf.add(treeMaker.Return(stepExpr));
+
+        return next;
     }
 
-    private void stepAllBranch(JCExpression stepAllExpr) {
-        current = withScope(current, (sub) -> {
-            JCVariableDecl iterField = sub.createLocalField(alloc.treeMaker.TypeApply(
-                    TreeMakerUtil.createClassName(alloc.treeMaker, alloc.names, "java", "util", "Iterator"),
-                    List.of(genClass.resultField.vartype)), stepAllExpr);
+    private void stepAll(JCExpression stepAllExpr) {
+        withLocalField(treeMaker.TypeApply(
+                TreeMakerUtil.createClassName(treeMaker, names, "java", "util", "Iterator"),
+                List.of(block.getResultType())), stepAllExpr, (decl) -> {
+                    JCMethodInvocation hasNextInv = treeMaker.Apply(List.nil(),
+                            treeMaker.Select(treeMaker.Ident(decl.name), names.fromString("hasNext")),
+                            List.nil());
 
-            JCMethodInvocation hasNextInv = alloc.treeMaker.Apply(List.nil(),
-                    alloc.treeMaker.Select(alloc.treeMaker.Ident(iterField.name), alloc.names.fromString("hasNext")),
-                    List.nil());
+                    JCMethodInvocation nextInv = treeMaker.Apply(List.nil(),
+                            treeMaker.Select(treeMaker.Ident(decl.name), names.fromString("next")),
+                            List.nil());
 
-            JCMethodInvocation nextInv = alloc.treeMaker.Apply(List.nil(),
-                    alloc.treeMaker.Select(alloc.treeMaker.Ident(iterField.name), alloc.names.fromString("next")),
-                    List.nil());
+                    current.add(createAssignStep(switchToNextState().id));
 
-            ListBuffer<JCStatement> last = sub.current;
-            last.add(createCallBranchStatement(sub.nextBranch()));
-
-            sub.current.add(alloc.treeMaker.If(hasNextInv, alloc.treeMaker.Block(0, List.of(
-                    createAssignResult(nextInv),
-                    alloc.treeMaker.Return(null))), null));
-        });
+                    current.add(treeMaker.If(hasNextInv, treeMaker.Block(0, List.of(treeMaker.Return(nextInv))), null));
+                });
     }
 
-    private ListBuffer<JCStatement> withScope(ListBuffer<JCStatement> subCurrent,
-            Consumer<GeneratorTransformer> consumer) {
-        GeneratorTransformer sub = new GeneratorTransformer(alloc, genClass, subCurrent);
-        consumer.accept(sub);
+    private ListBuffer<JCStatement> withBranch(JCStatement branch) {
+        ListBuffer<JCStatement> workCurrent = current;
 
-        sub.finishSub();
+        ListBuffer<JCStatement> branchBuf = new ListBuffer<>();
+        current = branchBuf;
 
-        return sub.current;
-    }
+        branch.accept(this);
+        ListBuffer<JCStatement> branchEndBuf = current;
 
-    private JCBlock withInnerGen(Consumer<GeneratorTransformer> consumer) {
-        GeneratorTransformer sub = GeneratorTransformer.createRoot(alloc, genClass.resultField.vartype);
-        consumer.accept(sub);
-
-        GeneratorClass subClass = sub.finish();
-
-        genClass.fields.put(subClass.resultField.name, subClass.resultField);
-        genClass.fields.put(subClass.stateField.name, subClass.stateField);
-        genClass.fields.putAll(subClass.fields);
-
-        for (GeneratorBranch branch : subClass.branches) {
-            genClass.methods.add(alloc.treeMaker.MethodDef(
-                    alloc.treeMaker.Modifiers(Flags.PRIVATE),
-                    branch.name,
-                    alloc.treeMaker.TypeIdent(TypeTag.VOID),
-                    List.nil(),
-                    List.nil(),
-                    List.nil(),
-                    alloc.treeMaker.Block(0, branch.statements.toList()),
-                    null));
+        if (branchBuf != branchEndBuf) {
+            GeneratorState next = switchToNextState();
+            workCurrent.addAll(createJump(next.id));
+        } else {
+            current = workCurrent;
         }
 
-        return alloc.treeMaker.Block(0, List.of(
-                subClass.createPeekStatement(alloc),
-                alloc.treeMaker.If(
-                        alloc.treeMaker.Binary(Tag.NE, alloc.treeMaker.Ident(subClass.stateField.name),
-                                alloc.treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_FINISH)),
-                        alloc.treeMaker.Block(0, List.of(
-                                createAssignResult(alloc.treeMaker.Ident(subClass.resultField.name)),
-                                alloc.treeMaker.Return(null))),
-                        null)));
+        return branchBuf;
+    }
+
+    private GeneratorState withStateBranch(JCStatement branch, boolean shouldJump) {
+        ListBuffer<JCStatement> workCurrent = current;
+
+        GeneratorState body = switchToNextState();
+        branch.accept(this);
+
+        GeneratorState next = switchToNextState();
+
+        if (shouldJump) {
+            workCurrent.addAll(createJump(next.id));
+        }
+
+        return body;
     }
 
     @Override
     public void visitIf(JCIf that) {
-        ListBuffer<JCStatement> workCurrent = current;
-
-        ListBuffer<JCStatement> thenBuf = new ListBuffer<>();
-        ListBuffer<JCStatement> elseBuf = new ListBuffer<>();
-
-        ListBuffer<JCStatement> thenLastBuf = withScope(thenBuf, that.thenpart::accept);
-
-        ListBuffer<JCStatement> elseLastBuf = elseBuf;
+        JCIf ifPart = treeMaker.If(that.cond, null, null);
+        current.add(ifPart);
         if (that.elsepart != null) {
-            elseLastBuf = withScope(elseBuf, that.elsepart::accept);
+            that.elsepart.accept(this);
         }
 
-        boolean thenStepped = thenLastBuf != thenBuf;
-        boolean elseStepped = elseLastBuf != elseBuf;
-
-        JCIf ifStatement = alloc.treeMaker.If(
-                that.cond,
-                alloc.treeMaker.Block(0, thenBuf.toList()),
-                elseBuf.isEmpty() ? null : alloc.treeMaker.Block(0, elseBuf.toList()));
-
-        if (thenStepped || elseStepped) {
-            GeneratorBranch next = nextBranch();
-
-            thenLastBuf.add(createCallBranchStatement(next));
-            if (elseLastBuf != null) {
-                elseLastBuf.add(createCallBranchStatement(next));
-            }
-        }
-
-        workCurrent.add(ifStatement);
+        ifPart.thenpart = treeMaker.Block(0, withBranch(that.thenpart).toList());
     }
 
     private void doConditionalLoop(JCExpression cond, JCStatement body, boolean deferredCond) {
-        ListBuffer<JCStatement> bodyBuf = new ListBuffer<>();
-        ListBuffer<JCStatement> bodyEndBuf = withScope(bodyBuf, body::accept);
+        GeneratorState bodyState = withStateBranch(body, !deferredCond);
 
-        if (bodyBuf != bodyEndBuf) {
-            ListBuffer<JCStatement> last = current;
-
-            GeneratorBranch bodyBranch = nextBranch();
-            bodyBranch.statements.addAll(bodyBuf);
-
-            GeneratorBranch next = nextBranch();
-
-            bodyEndBuf.add(createCallBranchStatement(next));
-
-            JCExpressionStatement bodyCall = alloc.treeMaker
-                    .Exec(alloc.treeMaker.Apply(List.nil(), alloc.treeMaker.Ident(bodyBranch.name), List.nil()));
-            if (deferredCond) {
-                last.add(bodyCall);
-                last.add(createReturnOnStep());
-            }
-            last.add(createCallBranchStatement(next));
-
-            current.add(alloc.treeMaker.WhileLoop(cond, alloc.treeMaker.Block(0, List.of(
-                    bodyCall,
-                    createReturnOnStep()))));
-        } else {
-            if (deferredCond) {
-                current.add(alloc.treeMaker.DoLoop(alloc.treeMaker.Block(0, bodyBuf.toList()), cond));
-            } else {
-                current.add(alloc.treeMaker.WhileLoop(cond, alloc.treeMaker.Block(0, bodyBuf.toList())));
-            }
-        }
-
+        current.add(treeMaker.If(cond, treeMaker.Block(0, createJump(bodyState.id)), null));
     }
 
     @Override
     public void visitForeachLoop(JCEnhancedForLoop that) {
-        JCMethodInvocation iteratorInv = alloc.treeMaker.Apply(
+        JCMethodInvocation iteratorInv = treeMaker.Apply(
                 List.nil(),
-                alloc.treeMaker.Select(that.expr, alloc.names.fromString("iterator")),
+                treeMaker.Select(that.expr, names.fromString("iterator")),
                 List.nil());
-        current = withScope(current, (sub) -> {
-            JCVariableDecl iterField = sub.createLocalField(alloc.treeMaker.TypeApply(
-                    TreeMakerUtil.createClassName(alloc.treeMaker, alloc.names, "java", "util", "Iterator"),
-                    List.of(that.var.vartype)), iteratorInv);
 
-            JCMethodInvocation hasNextInv = alloc.treeMaker.Apply(List.nil(),
-                    alloc.treeMaker.Select(alloc.treeMaker.Ident(iterField.name), alloc.names.fromString("hasNext")),
-                    List.nil());
+        withLocalField(treeMaker.TypeApply(
+                TreeMakerUtil.createClassName(treeMaker, names, "java", "util", "Iterator"),
+                List.of(that.var.vartype)), iteratorInv, (decl) -> {
+                    JCMethodInvocation hasNextInv = treeMaker.Apply(List.nil(),
+                            treeMaker.Select(treeMaker.Ident(decl.name), names.fromString("hasNext")),
+                            List.nil());
 
-            JCMethodInvocation nextInv = alloc.treeMaker.Apply(List.nil(),
-                    alloc.treeMaker.Select(alloc.treeMaker.Ident(iterField.name), alloc.names.fromString("next")),
-                    List.nil());
+                    JCMethodInvocation nextInv = treeMaker.Apply(List.nil(),
+                            treeMaker.Select(treeMaker.Ident(decl.name), names.fromString("next")),
+                            List.nil());
 
-            sub.current.add(
-                    alloc.treeMaker.Exec(alloc.treeMaker.Assign(alloc.treeMaker.Ident(iterField.name), iteratorInv)));
-            that.var.accept(sub);
-            sub.doConditionalLoop(hasNextInv, alloc.treeMaker.Block(0, List.of(
-                    alloc.treeMaker.Exec(alloc.treeMaker.Assign(alloc.treeMaker.Ident(that.var.name), nextInv)),
-                    that.body)), false);
-        });
+                    that.var.accept(this);
+
+                    doConditionalLoop(hasNextInv, treeMaker.Block(0, List.of(
+                            treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(that.var.name), nextInv)),
+                            that.body)), false);
+                });
     }
 
     @Override
     public void visitForLoop(JCForLoop that) {
-        current = withScope(current, (sub) -> {
-            for (JCStatement statement : that.init) {
-                statement.accept(sub);
-            }
+        for (JCStatement statement : that.init) {
+            statement.accept(this);
+        }
 
-            ListBuffer<JCStatement> buf = new ListBuffer<>();
-            if (that.body != null) {
-                buf.append(that.body);
-            }
+        ListBuffer<JCStatement> buf = new ListBuffer<>();
+        if (that.body != null) {
+            buf.append(that.body);
+        }
 
-            buf.addAll(that.step);
+        buf.addAll(that.step);
 
-            sub.doConditionalLoop(that.cond, alloc.treeMaker.Block(0, buf.toList()), false);
-        });
+        doConditionalLoop(that.cond, treeMaker.Block(0, buf.toList()), false);
     }
 
     @Override
@@ -320,11 +226,22 @@ public class GeneratorTransformer extends Visitor {
 
     @Override
     public void visitBlock(JCBlock that) {
-        current = withScope(current, (sub) -> {
-            for (JCStatement statement : that.stats) {
-                statement.accept(sub);
+        ListBuffer<JCStatement> cleanupBuffer = new ListBuffer<>();
+
+        for (JCStatement statement : that.stats) {
+            statement.accept(this);
+
+            if (statement instanceof JCVariableDecl varDecl) {
+                if (varDecl.vartype instanceof JCPrimitiveTypeTree) {
+                    continue;
+                }
+
+                cleanupBuffer.add(treeMaker
+                        .Exec(treeMaker.Assign(treeMaker.Ident(varDecl.name), treeMaker.Literal(TypeTag.BOT, null))));
             }
-        });
+        }
+
+        current.addAll(cleanupBuffer);
     }
 
     @Override
@@ -333,9 +250,9 @@ public class GeneratorTransformer extends Visitor {
             String method = methodInv.meth.toString();
 
             if ("step".equals(method)) {
-                stepBranch(methodInv.args.head);
+                step(methodInv.args.head);
             } else if ("stepAll".equals(method)) {
-                stepAllBranch(methodInv.args.head);
+                stepAll(methodInv.args.head);
             } else {
                 super.visitExec(that);
             }
@@ -349,10 +266,10 @@ public class GeneratorTransformer extends Visitor {
     public void visitVarDef(JCVariableDecl that) {
         Name varName = that.name;
         if (that.init != null) {
-            current.add(alloc.treeMaker.Exec(alloc.treeMaker.Assign(alloc.treeMaker.Ident(varName), that.init)));
+            current.add(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(varName), that.init)));
         }
 
-        scopeVariables.put(that.name, that);
+        fieldBuffer.fields.add(that);
     }
 
     @Override
@@ -370,7 +287,7 @@ public class GeneratorTransformer extends Visitor {
         }
 
         current.add(createAssignStep(Constants.GENERATOR_STEP_FINISH));
-        current.add(alloc.treeMaker.Return(null));
+        current.add(treeMaker.Return(null));
     }
 
     @Override
@@ -392,12 +309,13 @@ public class GeneratorTransformer extends Visitor {
 
     @Override
     public void visitSynchronized(JCSynchronized that) {
-        current.add(alloc.treeMaker.Synchronized(that.lock, withInnerGen(that.body::accept)));
+        // TODO Auto-generated method stub
+        super.visitSynchronized(that);
     }
 
     @Override
     public void visitTry(JCTry that) {
-        current.add(
-                alloc.treeMaker.Try(that.resources, withInnerGen(that.body::accept), that.catchers, that.finalizer));
+        // TODO Auto-generated method stub
+        super.visitTry(that);
     }
 }

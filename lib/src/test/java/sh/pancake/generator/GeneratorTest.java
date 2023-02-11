@@ -26,15 +26,7 @@ public class GeneratorTest {
             step(a++);
         }
 
-        try {
-            for (int i = 0; i < 5; i++) {
-
-            }
-
-            for (int i = 0; i < 5; i++) {
-                step(i);
-            }
-        } catch (Exception e) {
+        for (int i = 0; i < 5; i++) {
 
         }
 
@@ -51,11 +43,7 @@ public class GeneratorTest {
     Iterator<Integer> gen2(Iterator<Integer> iter2) {
         step(100);
 
-        try {
-            stepAll(iter2);
-        } catch (Exception e) {
-
-        }
+        stepAll(iter2);
 
         step(200);
     }
@@ -71,16 +59,12 @@ public class GeneratorTest {
             }
         } while (i > 0 && i < 10);
 
-        try {
-            stepAll(iter2);
-        } catch (Exception e) {
-            System.err.println("Error: " + e);
-        }
+        stepAll(iter2);
     }
 
     @Test
     public void testGenerator() {
-        Iterator<Integer> testGen = gen2(gen1());
+        Iterator<Integer> testGen = gen(gen1());
         while (testGen.hasNext()) {
             System.out.println(testGen.next());
         }
