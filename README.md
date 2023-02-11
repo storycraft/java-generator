@@ -115,7 +115,7 @@ public Iterator<Integer> gen(Iterator<Integer> iter2) {
 }
 ```
 
-## TODO
+## Todo
 - [x] for
 - [x] foreach
 - [x] if
@@ -128,8 +128,9 @@ public Iterator<Integer> gen(Iterator<Integer> iter2) {
   - [ ] try with resources
 - [ ] switch
 - [ ] switch expression
-
-... and other syntaxes not mentioned.
+- [ ] exploding step in expression
+- [ ] Async runtime with await using generator
+...
 
 ## License
 Java generator is licensed under Apache License 2.0
