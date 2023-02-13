@@ -5,12 +5,22 @@
  */
 package sh.pancake.generator.processor.ast.scanner;
 
+import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.tree.JCTree.*;
 
 public class StepScanner extends TreeScanner {
 
     private boolean doStep = false;
+
+    @Override
+    public void scan(JCTree tree) {
+        if (doStep) {
+            return;
+        }
+
+        super.scan(tree);
+    }
 
     @Override
     public void visitApply(JCMethodInvocation tree) {
