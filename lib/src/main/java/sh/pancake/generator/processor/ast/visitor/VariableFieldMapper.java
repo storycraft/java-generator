@@ -106,7 +106,7 @@ public class VariableFieldMapper extends TreeTranslator {
         super.visitVarDef(tree);
 
         Name converted = getConverted(tree.name);
-        if (converted != null && tree.init == null) {
+        if (converted != null && tree.init != null) {
             super.result = treeMaker.at(tree.pos).Exec(treeMaker.Assign(treeMaker.Ident(converted), tree.init));
         } else {
             super.result = treeMaker.at(tree.pos).Skip();
