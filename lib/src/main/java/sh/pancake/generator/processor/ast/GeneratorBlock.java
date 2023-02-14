@@ -21,15 +21,13 @@ import sh.pancake.generator.processor.TreeMakerUtil;
 public class GeneratorBlock {
     private final JCVariableDecl stateField;
     private final JCExpression resultType;
-    private final JCVariableDecl catchStateField;
 
     private int nextBranchId;
     private final ArrayList<GeneratorState> states;
 
-    public GeneratorBlock(JCVariableDecl stateField, JCExpression resultType, JCVariableDecl catchStateField) {
+    public GeneratorBlock(JCVariableDecl stateField, JCExpression resultType) {
         this.stateField = stateField;
         this.resultType = resultType;
-        this.catchStateField = catchStateField;
 
         nextBranchId = Constants.GENERATOR_STEP_START;
         states = new ArrayList<>();
@@ -43,10 +41,6 @@ public class GeneratorBlock {
         return stateField.name;
     }
 
-    public Name getCatchStateFieldName() {
-        return catchStateField.name;
-    }
-
     public GeneratorState nextState() {
         GeneratorState next = new GeneratorState(nextBranchId++, new ListBuffer<>());
         states.add(next);
@@ -55,10 +49,6 @@ public class GeneratorBlock {
 
     public JCStatement createNextStatement(TreeMaker treeMaker, Names names) {
         ListBuffer<JCCase> peekCases = new ListBuffer<>();
-
-        peekCases.add(treeMaker.Case(CaseKind.STATEMENT,
-                List.of(treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_FINISH)),
-                List.of(treeMaker.Return(treeMaker.Literal(TypeTag.BOT, null))), null));
 
         for (GeneratorState state : states) {
             peekCases.add(treeMaker.Case(CaseKind.STATEMENT,
@@ -73,16 +63,22 @@ public class GeneratorBlock {
                 List.of(treeMaker.Throw(treeMaker.NewClass(
                         null,
                         List.nil(),
-                        TreeMakerUtil.createClassName(treeMaker, names, "java", "lang", "RuntimeException"),
+                        TreeMakerUtil.createClassName(treeMaker, names, "java", "lang",
+                                "RuntimeException"),
                         List.of(treeMaker.Literal(Constants.ERR_UNREACHABLE)),
                         null))),
                 null));
 
-        return treeMaker.WhileLoop(treeMaker.Literal(TypeTag.BOOLEAN, 1), treeMaker.Try(
-                treeMaker.Block(0,
-                        List.of(treeMaker.Switch(treeMaker.Ident(stateField.name), peekCases.toList()))),
-                List.of(createCatch(treeMaker, names)),
-                null));
+        return treeMaker.WhileLoop(
+                treeMaker.Binary(Tag.NE, treeMaker.Ident(stateField.name),
+                        treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_FINISH)),
+                treeMaker.Try(
+                        treeMaker.Block(0,
+                                List.of(treeMaker.Switch(
+                                        treeMaker.Ident(stateField.name),
+                                        peekCases.toList()))),
+                        List.of(createCatch(treeMaker, names)),
+                        null));
     }
 
     private JCCatch createCatch(TreeMaker treeMaker, Names names) {
@@ -94,16 +90,6 @@ public class GeneratorBlock {
                 null);
 
         ListBuffer<JCStatement> catchBuf = new ListBuffer<>();
-
-        JCLiteral finishLiteral = treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_FINISH);
-
-        catchBuf.add(treeMaker.If(
-                treeMaker.Binary(Tag.NE, treeMaker.Ident(catchStateField.name), finishLiteral),
-                treeMaker.Block(0, List.of(
-                        treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(stateField.name),
-                                treeMaker.Ident(catchStateField.name))),
-                        treeMaker.Break(null))),
-                null));
 
         catchBuf.add(treeMaker.Exec(treeMaker.Assign(
                 treeMaker.Ident(stateField.name),

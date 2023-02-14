@@ -3,7 +3,7 @@
  *
  * Copyright (c) storycraft. Licensed under the Apache Licence 2.0.
  */
-package sh.pancake.generator.processor.ast.scanner;
+package sh.pancake.generator.processor.ast.visitor;
 
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeScanner;
@@ -11,11 +11,17 @@ import com.sun.tools.javac.tree.JCTree.*;
 
 public class StepScanner extends TreeScanner {
 
-    private boolean doStep = false;
+    private boolean step;
+
+    public boolean scanStep(JCTree tree) {
+        step = false;
+        scan(tree);
+        return step;
+    }
 
     @Override
     public void scan(JCTree tree) {
-        if (doStep) {
+        if (step) {
             return;
         }
 
@@ -29,13 +35,13 @@ public class StepScanner extends TreeScanner {
         String method = tree.meth.toString();
 
         if ("step".equals(method) || "stepAll".equals(method)) {
-            if (!doStep) {
-                doStep = true;
+            if (!step) {
+                step = true;
             }
         }
     }
 
-    public boolean containsStep() {
-        return doStep;
+    @Override
+    public void visitClassDef(JCClassDecl tree) {
     }
 }

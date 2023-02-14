@@ -3,7 +3,7 @@
  *
  * Copyright (c) storycraft. Licensed under the Apache Licence 2.0.
  */
-package sh.pancake.generator.processor.ast;
+package sh.pancake.generator.processor.ast.visitor;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -18,6 +18,8 @@ import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Name;
+
+import sh.pancake.generator.processor.ast.FieldBuffer;
 
 public class VariableFieldMapper extends TreeTranslator {
     private final TreeMaker treeMaker;

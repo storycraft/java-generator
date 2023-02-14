@@ -29,8 +29,8 @@ import com.sun.tools.javac.util.Names;
 import sh.pancake.generator.Generator;
 import sh.pancake.generator.processor.ast.GeneratorBuilder;
 import sh.pancake.generator.processor.ast.FieldBuffer;
-import sh.pancake.generator.processor.ast.GeneratorTransformer;
-import sh.pancake.generator.processor.ast.VariableFieldMapper;
+import sh.pancake.generator.processor.ast.visitor.GeneratorTransformer;
+import sh.pancake.generator.processor.ast.visitor.VariableFieldMapper;
 
 @SupportedAnnotationTypes("sh.pancake.generator.Generator")
 public class GeneratorProcessor extends AbstractProcessor {
@@ -89,10 +89,9 @@ public class GeneratorProcessor extends AbstractProcessor {
         method.body.accept(new VariableFieldMapper(cx, fieldBuffer));
 
         GeneratorTransformer transformer = GeneratorTransformer.createRoot(cx, fieldBuffer, iteratorType);
-        method.body.accept(transformer);
-
         method.body.stats = List
-                .of(treeMaker.Return(new GeneratorBuilder(cx, fieldBuffer, transformer.finish()).build()));
+                .of(treeMaker
+                        .Return(new GeneratorBuilder(cx, fieldBuffer, transformer.transform(method.body)).build()));
 
         messager.printMessage(Kind.NOTE, "after method: " + method);
     }

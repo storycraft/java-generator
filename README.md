@@ -120,15 +120,14 @@ public Iterator<Integer> gen(Iterator<Integer> iter2) {
 - [x] foreach
 - [x] if
 - [x] while
-- [ ] synchronized
+- [x] synchronized
 - [x] do-while
 - [ ] try block
   - [ ] try
   - [ ] catch
   - [ ] try with resources
 - [ ] switch
-- [ ] switch expression
-- [ ] exploding step in expression
+- [ ] break
 - [ ] Async runtime with await using generator
 ...
 
