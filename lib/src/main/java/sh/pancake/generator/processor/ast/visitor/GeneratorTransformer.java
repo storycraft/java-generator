@@ -75,11 +75,14 @@ public class GeneratorTransformer {
         current.add(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(decl.name), treeMaker.Literal(TypeTag.BOT, null))));
     }
 
-    private JCStatement withNested(JCStatement statement) {
-        GeneratorBlock subBlock = new GeneratorTransformer(treeMaker, names, fieldBuffer, block.getResultType())
-                .transform(statement);
+    private void withNested(JCStatement statement, Consumer<JCStatement> consumer) {
+        ListBuffer<JCStatement> buf = current;
+        GeneratorState next = switchToNextState();
 
-        return subBlock.createNextStatement(treeMaker, names);
+        buf.add(createAssignStep(next.id));
+
+        GeneratorTransformer sub = new GeneratorTransformer(treeMaker, names, fieldBuffer, block.getResultType());
+        consumer.accept(sub.transform(statement).createNextStatement(treeMaker, names));
     }
 
     private JCExpressionStatement createAssignStep(int id) {
@@ -300,8 +303,23 @@ public class GeneratorTransformer {
         }
 
         @Override
+        public void visitLabelled(JCLabeledStatement that) {
+            GeneratorState next = switchToNextState();
+            that.accept(this);
+        }
+
+        @Override
         public void visitSynchronized(JCSynchronized that) {
-            current.add(treeMaker.Synchronized(that.lock, treeMaker.Block(0, List.of(withNested(that.body)))));
+            withNested(that.body, (statement) -> {
+                current.add(treeMaker.Synchronized(that.lock, treeMaker.Block(0, List.of(statement))));
+            });
+        }
+
+        @Override
+        public void visitSwitch(JCSwitch that) {
+            ListBuffer<JCCase> cases = new ListBuffer<>();
+
+            current.add(treeMaker.Switch(that.selector, cases.toList()));
         }
 
         @Override
