@@ -14,29 +14,35 @@ public class GeneratorTest {
 
     @Generator
     private Iterator<Integer> gen1() {
-        int a = 0;
+        Object obj = new Object();
 
-        if (a % 2 == 0) {
+        synchronized(obj) {
+            int a = 0;
+
+            if (a % 2 == 0) {
+                step(a);
+            } else {
+                step(a++);
+            }
+    
+            while (a < 10) {
+                step(a++);
+            }
+
+            for (int i = 0; i < 5; i++) {
+    
+            }
+            
+            String i = "1";
+    
+            a += 2;
+    
             step(a);
-        } else {
-            step(a++);
+    
+            a += 3;
         }
 
-        while (a < 10) {
-            step(a++);
-        }
-
-        for (int i = 0; i < 5; i++) {
-
-        }
-        
-        String i = "1";
-
-        a += 2;
-
-        step(a);
-
-        a += 3;
+        step(2);
 
         System.out.println("Generator done");
     }

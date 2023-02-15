@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
+import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.*;
@@ -20,35 +21,44 @@ import com.sun.tools.javac.util.Names;
 
 import sh.pancake.generator.processor.TreeMakerUtil;
 import sh.pancake.generator.processor.ast.Constants;
-import sh.pancake.generator.processor.ast.FieldBuffer;
+import sh.pancake.generator.processor.ast.NameAlloc;
 import sh.pancake.generator.processor.ast.GeneratorBlock;
 import sh.pancake.generator.processor.ast.GeneratorState;
 
 public class GeneratorTransformer {
     private final TreeMaker treeMaker;
     private final Names names;
-    private final FieldBuffer fieldBuffer;
+    private final NameAlloc nameAlloc;
+
+    private final JCModifiers privateModifiers;
 
     private final GeneratorBlock block;
     private ListBuffer<JCStatement> current;
 
-    private GeneratorTransformer(TreeMaker treeMaker, Names names, FieldBuffer fieldBuffer, JCExpression retType) {
+    private GeneratorTransformer(TreeMaker treeMaker, Names names, NameAlloc nameAlloc, JCExpression retType) {
         this.treeMaker = treeMaker;
         this.names = names;
-        this.fieldBuffer = fieldBuffer;
+        this.nameAlloc = nameAlloc;
 
-        this.block = new GeneratorBlock(fieldBuffer.nextPrivateField(
-                treeMaker.TypeIdent(TypeTag.INT),
-                treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_START)),
-                retType);
+        privateModifiers = treeMaker.Modifiers(Flags.PRIVATE);
+
+        this.block = new GeneratorBlock(
+                treeMaker.VarDef(
+                        privateModifiers,
+                        nameAlloc.nextName(),
+                        treeMaker.TypeIdent(TypeTag.INT),
+                        treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_START)),
+                retType,
+                nameAlloc.nextName(),
+                nameAlloc.nextName());
         this.current = block.nextState().statements;
     }
 
-    public static GeneratorTransformer createRoot(Context cx, FieldBuffer fieldBuffer, JCExpression retType) {
+    public static GeneratorTransformer createRoot(Context cx, NameAlloc nameAlloc, JCExpression retType) {
         TreeMaker treeMaker = TreeMaker.instance(cx);
         Names names = Names.instance(cx);
 
-        return new GeneratorTransformer(treeMaker, names, fieldBuffer, retType);
+        return new GeneratorTransformer(treeMaker, names, nameAlloc, retType);
     }
 
     public GeneratorBlock transform(JCStatement statement) {
@@ -59,7 +69,8 @@ public class GeneratorTransformer {
     }
 
     private void withTempVar(JCExpression type, @Nullable JCExpression init, Consumer<JCVariableDecl> consumer) {
-        JCVariableDecl decl = fieldBuffer.nextPrivateField(type);
+        JCVariableDecl decl = treeMaker.VarDef(privateModifiers, nameAlloc.nextName(), type, null);
+        block.captureVariable(decl);
 
         if (init != null) {
             current.add(
@@ -81,8 +92,12 @@ public class GeneratorTransformer {
 
         buf.add(createAssignStep(next.id));
 
-        GeneratorTransformer sub = new GeneratorTransformer(treeMaker, names, fieldBuffer, block.getResultType());
-        consumer.accept(sub.transform(statement).createNextStatement(treeMaker, names));
+        GeneratorTransformer sub = new GeneratorTransformer(treeMaker, names, nameAlloc, block.resultType);
+        GeneratorBlock subBlock = sub.transform(statement);
+
+        block.captureAll(subBlock.capturedList());
+
+        consumer.accept(subBlock.createNextStatement(treeMaker, names));
     }
 
     private JCExpressionStatement createAssignStep(int id) {
@@ -95,7 +110,7 @@ public class GeneratorTransformer {
         return List.of(
                 treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(block.getStateFieldName()),
                         treeMaker.Literal(TypeTag.INT, id))),
-                treeMaker.Break(null));
+                treeMaker.Break(block.stateSwitchLabel));
     }
 
     private GeneratorState switchToNextState() {
@@ -104,25 +119,22 @@ public class GeneratorTransformer {
         return next;
     }
 
-    private GeneratorState step(JCExpression stepExpr) {
+    private void step(JCExpression stepExpr) {
         ListBuffer<JCStatement> buf = current;
         GeneratorState next = switchToNextState();
 
         buf.add(createAssignStep(next.id));
         buf.add(treeMaker.Return(stepExpr));
-
-        return next;
     }
 
-    private GeneratorState stepAll(JCExpression stepAllExpr) {
+    private void stepAll(JCExpression stepAllExpr) {
         ListBuffer<JCStatement> buf = current;
-        GeneratorState next = switchToNextState();
-
         withTempVar(treeMaker.TypeApply(
                 TreeMakerUtil.createClassName(treeMaker, names, "java", "util", "Iterator"),
-                List.of(block.getResultType())),
+                List.of(block.resultType)),
                 stepAllExpr,
                 (decl) -> {
+                    GeneratorState next = switchToNextState();
                     JCMethodInvocation hasNextInv = treeMaker.Apply(List.nil(),
                             treeMaker.Select(treeMaker.Ident(decl.name), names.fromString("hasNext")),
                             List.nil());
@@ -136,8 +148,6 @@ public class GeneratorTransformer {
                     current.add(
                             treeMaker.If(hasNextInv, treeMaker.Block(0, List.of(treeMaker.Return(nextInv))), null));
                 });
-
-        return next;
     }
 
     private class StatementTransformer extends Visitor {
@@ -258,9 +268,12 @@ public class GeneratorTransformer {
             ListBuffer<JCStatement> cleanupBuffer = new ListBuffer<>();
 
             for (JCStatement statement : that.stats) {
-                transform(statement);
-
                 if (statement instanceof JCVariableDecl varDecl) {
+                    block.captureVariable(treeMaker.VarDef(privateModifiers, varDecl.name, varDecl.vartype, null));
+                    if (varDecl.init != null) {
+                        transform(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(varDecl.name), varDecl.init)));
+                    }
+
                     if (varDecl.vartype instanceof JCPrimitiveTypeTree) {
                         continue;
                     }
@@ -268,7 +281,10 @@ public class GeneratorTransformer {
                     cleanupBuffer.add(treeMaker
                             .Exec(treeMaker.Assign(treeMaker.Ident(varDecl.name),
                                     treeMaker.Literal(TypeTag.BOT, null))));
+                    continue;
                 }
+
+                transform(statement);
             }
 
             current.addAll(cleanupBuffer);

@@ -23,19 +23,17 @@ public class GeneratorBuilder {
     private final TreeMaker treeMaker;
     private final Names names;
 
-    private final FieldBuffer fieldBuffer;
     private final GeneratorBlock block;
 
     private final JCVariableDecl resultDecl;
 
-    public GeneratorBuilder(Context cx, FieldBuffer fieldBuffer, GeneratorBlock block) {
+    public GeneratorBuilder(Context cx, Name resultFieldName, GeneratorBlock block) {
         treeMaker = TreeMaker.instance(cx);
         names = Names.instance(cx);
 
-        this.fieldBuffer = fieldBuffer;
         this.block = block;
 
-        resultDecl = fieldBuffer.nextPrivateField(block.getResultType());
+        resultDecl = treeMaker.VarDef(treeMaker.Modifiers(Flags.PRIVATE), resultFieldName, block.resultType, null);
     }
 
     private JCAnnotation createOverride() {
@@ -64,7 +62,8 @@ public class GeneratorBuilder {
     public JCNewClass build() {
         ListBuffer<JCTree> iteratorBuf = new ListBuffer<>();
 
-        iteratorBuf.addAll(fieldBuffer.build());
+        iteratorBuf.addAll(block.capturedList());
+        iteratorBuf.add(resultDecl);
 
         JCModifiers privateModifiers = treeMaker.Modifiers(Flags.PRIVATE);
 

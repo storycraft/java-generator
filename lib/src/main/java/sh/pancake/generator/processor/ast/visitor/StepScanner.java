@@ -30,15 +30,16 @@ public class StepScanner extends TreeScanner {
 
     @Override
     public void visitApply(JCMethodInvocation tree) {
-        super.visitApply(tree);
-
         String method = tree.meth.toString();
 
-        if ("step".equals(method) || "stepAll".equals(method)) {
+        if (tree.args.size() == 1 && ("step".equals(method) || "stepAll".equals(method))) {
             if (!step) {
                 step = true;
             }
+            return;
         }
+
+        super.visitApply(tree);
     }
 
     @Override

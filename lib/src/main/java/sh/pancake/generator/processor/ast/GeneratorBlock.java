@@ -6,6 +6,7 @@
 package sh.pancake.generator.processor.ast;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
 import com.sun.source.tree.CaseTree.CaseKind;
 import com.sun.tools.javac.code.TypeTag;
@@ -20,21 +21,27 @@ import sh.pancake.generator.processor.TreeMakerUtil;
 
 public class GeneratorBlock {
     private final JCVariableDecl stateField;
-    private final JCExpression resultType;
+    public final JCExpression resultType;
 
-    private int nextBranchId;
+    public final Name loopLabel;
+    public final Name stateSwitchLabel;
+
+    private int nextStateId;
     private final ArrayList<GeneratorState> states;
 
-    public GeneratorBlock(JCVariableDecl stateField, JCExpression resultType) {
+    private final ListBuffer<JCVariableDecl> capturedVar;
+
+    public GeneratorBlock(JCVariableDecl stateField, JCExpression resultType, Name loopLabel, Name stateSwitchLabel) {
         this.stateField = stateField;
         this.resultType = resultType;
+        this.loopLabel = loopLabel;
+        this.stateSwitchLabel = stateSwitchLabel;
 
-        nextBranchId = Constants.GENERATOR_STEP_START;
+        nextStateId = Constants.GENERATOR_STEP_START;
         states = new ArrayList<>();
-    }
+        capturedVar = new ListBuffer<>();
 
-    public JCExpression getResultType() {
-        return resultType;
+        capturedVar.add(stateField);
     }
 
     public Name getStateFieldName() {
@@ -42,22 +49,41 @@ public class GeneratorBlock {
     }
 
     public GeneratorState nextState() {
-        GeneratorState next = new GeneratorState(nextBranchId++, new ListBuffer<>());
+        GeneratorState next = new GeneratorState(nextStateId++, new ListBuffer<>());
         states.add(next);
         return next;
     }
 
+    public void captureVariable(JCVariableDecl decl) {
+        capturedVar.add(decl);
+    }
+
+    public void captureAll(Collection<JCVariableDecl> collection) {
+        for (JCVariableDecl decl : collection) {
+            capturedVar.add(decl);
+        }
+    }
+
+    public List<JCVariableDecl> capturedList() {
+        return capturedVar.toList();
+    }
+
     public JCStatement createNextStatement(TreeMaker treeMaker, Names names) {
-        ListBuffer<JCCase> peekCases = new ListBuffer<>();
+        ListBuffer<JCCase> cases = new ListBuffer<>();
+
+        cases.add(treeMaker.Case(CaseKind.STATEMENT,
+                List.of(treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_FINISH)),
+                List.of(treeMaker.Break(loopLabel)),
+                null));
 
         for (GeneratorState state : states) {
-            peekCases.add(treeMaker.Case(CaseKind.STATEMENT,
+            cases.add(treeMaker.Case(CaseKind.STATEMENT,
                     List.of(treeMaker.Literal(TypeTag.INT, state.id)),
                     state.statements.toList(),
                     null));
         }
 
-        peekCases.add(treeMaker.Case(
+        cases.add(treeMaker.Case(
                 CaseKind.STATEMENT,
                 List.of(treeMaker.DefaultCaseLabel()),
                 List.of(treeMaker.Throw(treeMaker.NewClass(
@@ -69,16 +95,17 @@ public class GeneratorBlock {
                         null))),
                 null));
 
-        return treeMaker.WhileLoop(
-                treeMaker.Binary(Tag.NE, treeMaker.Ident(stateField.name),
-                        treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_FINISH)),
-                treeMaker.Try(
-                        treeMaker.Block(0,
-                                List.of(treeMaker.Switch(
-                                        treeMaker.Ident(stateField.name),
-                                        peekCases.toList()))),
-                        List.of(createCatch(treeMaker, names)),
-                        null));
+        return treeMaker.Labelled(
+                loopLabel,
+                treeMaker.WhileLoop(
+                        treeMaker.Literal(TypeTag.BOOLEAN, 1),
+                        treeMaker.Try(
+                                treeMaker.Block(0,
+                                        List.of(treeMaker.Labelled(stateSwitchLabel, treeMaker.Switch(
+                                                treeMaker.Ident(stateField.name),
+                                                cases.toList())))),
+                                List.of(createCatch(treeMaker, names)),
+                                null)));
     }
 
     private JCCatch createCatch(TreeMaker treeMaker, Names names) {
