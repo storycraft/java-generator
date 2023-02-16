@@ -11,7 +11,7 @@ import com.sun.tools.javac.tree.JCTree.*;
 
 import sh.pancake.generator.processor.ast.Constants;
 
-public class TransformScanner extends TreeScanner {
+public class TransformChecker extends TreeScanner {
 
     private boolean transform;
 

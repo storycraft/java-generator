@@ -178,14 +178,14 @@ public class GeneratorTransformer {
     }
 
     private class StatementTransformer extends Visitor {
-        private final TransformScanner scanner;
+        private final TransformChecker checker;
 
         public StatementTransformer() {
-            scanner = new TransformScanner();
+            checker = new TransformChecker();
         }
 
         public void transform(JCStatement statement) {
-            if (scanner.shouldTransform(statement)) {
+            if (checker.shouldTransform(statement)) {
                 statement.accept(this);
             } else {
                 current.add(statement);
