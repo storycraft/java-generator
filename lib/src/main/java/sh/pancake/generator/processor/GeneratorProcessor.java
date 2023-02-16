@@ -48,6 +48,10 @@ public class GeneratorProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        if (roundEnv.processingOver()) {
+            return false;
+        }
+
         Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(Generator.class);
 
         for (Element e : elements) {

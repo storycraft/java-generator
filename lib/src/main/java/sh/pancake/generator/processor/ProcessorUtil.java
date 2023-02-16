@@ -8,16 +8,13 @@ package sh.pancake.generator.processor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-import sun.misc.Unsafe;
-
+@SuppressWarnings({"sunapi", "all"})
 class ProcessorUtil {
-
-    @SuppressWarnings({ "sunapi", "all" })
     public static void disableIllegalAccessWarning() {
         try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            Field theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
             theUnsafe.setAccessible(true);
-            Unsafe u = (Unsafe) theUnsafe.get(null);
+            sun.misc.Unsafe u = (sun.misc.Unsafe) theUnsafe.get(null);
 
             Class<?> cls = Class.forName("jdk.internal.module.IllegalAccessLogger");
 
@@ -40,7 +37,7 @@ class ProcessorUtil {
             return; // jdk8-; this is not needed.
         }
 
-        Unsafe unsafe = getUnsafe();
+        sun.misc.Unsafe unsafe = getUnsafe();
         Object jdkCompilerModule = getJdkCompilerModule();
         Module ownModule = GeneratorProcessor.class.getModule();
 
@@ -57,11 +54,11 @@ class ProcessorUtil {
         }
     }
 
-    private static Unsafe getUnsafe() {
+    private static sun.misc.Unsafe getUnsafe() {
         try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            Field theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
             theUnsafe.setAccessible(true);
-            return (Unsafe) theUnsafe.get(null);
+            return (sun.misc.Unsafe) theUnsafe.get(null);
         } catch (Exception e) {
             return null;
         }
