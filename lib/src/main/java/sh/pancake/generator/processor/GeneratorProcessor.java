@@ -8,7 +8,6 @@ package sh.pancake.generator.processor;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -16,7 +15,6 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
-import javax.tools.Diagnostic.Kind;
 
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
@@ -38,8 +36,6 @@ public class GeneratorProcessor extends AbstractProcessor {
     private JavacTrees trees;
     private TreeMaker treeMaker;
     private Names names;
-
-    private Messager messager;
 
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -67,8 +63,6 @@ public class GeneratorProcessor extends AbstractProcessor {
 
         JavacProcessingEnvironment env = (JavacProcessingEnvironment) processingEnv;
 
-        messager = env.getMessager();
-
         cx = env.getContext();
         treeMaker = TreeMaker.instance(cx);
         trees = JavacTrees.instance(cx);
@@ -85,8 +79,6 @@ public class GeneratorProcessor extends AbstractProcessor {
     }
 
     private void processMethod(JCMethodDecl method) {
-        messager.printMessage(Kind.NOTE, "before method: " + method);
-
         JCExpression iteratorType = extractIteratorType(method);
         NameAlloc nameAlloc = new NameAlloc(cx);
 
@@ -97,7 +89,5 @@ public class GeneratorProcessor extends AbstractProcessor {
                 .of(treeMaker
                         .Return(new GeneratorBuilder(cx, nameAlloc.nextName(), transformer.transform(method.body))
                                 .build()));
-
-        messager.printMessage(Kind.NOTE, "after method: " + method);
     }
 }
