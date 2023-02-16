@@ -378,7 +378,7 @@ public class GeneratorTransformer {
             ListBuffer<JCStatement> buf = current;
             StepTag endTag = defaultBreak = createStepTag();
 
-            Map<JCCase, GeneratorState> caseMap = new HashMap<>();
+            ListBuffer<JCCase> cases = new ListBuffer<>();
 
             boolean containsDefault = false;
             for (JCCase switchCase : that.cases) {
@@ -391,25 +391,22 @@ public class GeneratorTransformer {
                     }
                 }
 
-                GeneratorState next = switchToNextState();
                 StepTag tag = createStepTag(switchToNextState().id);
                 for (JCStatement statement : switchCase.stats) {
                     transform(statement);
                 }
 
-                caseMap.put(
-                        treeMaker.Case(
-                                switchCase.caseKind,
-                                switchCase.labels,
-                                createJump(tag),
-                                null),
-                        next);
+                cases.add(treeMaker.Case(
+                        switchCase.caseKind,
+                        switchCase.labels,
+                        createJump(tag),
+                        null));
             }
 
             GeneratorState end = switchToNextState();
             endTag.setStep(end.id);
 
-            buf.add(treeMaker.Switch(that.selector, List.from(caseMap.keySet())));
+            buf.add(treeMaker.Switch(that.selector, cases.toList()));
             if (!containsDefault) {
                 buf.addAll(createJump(endTag));
             }
