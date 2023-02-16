@@ -27,6 +27,8 @@ public class GeneratorTest {
     
             while (a < 10) {
                 step(a++);
+
+                if (a == 5) break;
             }
 
             for (int i = 0; i < 5; i++) {

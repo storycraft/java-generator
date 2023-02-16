@@ -11,7 +11,6 @@ import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
-import com.sun.source.tree.Tree.Kind;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.tree.JCTree;
@@ -179,22 +178,18 @@ public class GeneratorTransformer {
     }
 
     private class StatementTransformer extends Visitor {
-        private final StepScanner stepScanner;
+        private final TransformScanner scanner;
 
         public StatementTransformer() {
-            stepScanner = new StepScanner();
+            scanner = new TransformScanner();
         }
 
         public void transform(JCStatement statement) {
-            if (mustHandle(statement) || stepScanner.scanStep(statement)) {
+            if (scanner.shouldTransform(statement)) {
                 statement.accept(this);
             } else {
                 current.add(statement);
             }
-        }
-
-        private boolean mustHandle(JCStatement statement) {
-            return statement.getKind() == Kind.BREAK || statement.getKind() == Kind.CONTINUE;
         }
 
         private ListBuffer<JCStatement> withBranch(JCStatement branch) {
@@ -338,9 +333,9 @@ public class GeneratorTransformer {
             if (that.expr instanceof JCMethodInvocation methodInv && methodInv.args.size() == 1) {
                 String method = methodInv.meth.toString();
 
-                if ("step".equals(method)) {
+                if (Constants.GENERATOR_YIELD.equals(method)) {
                     step(methodInv.args.head);
-                } else if ("stepAll".equals(method)) {
+                } else if (Constants.GENERATOR_YIELD_ALL.equals(method)) {
                     stepAll(methodInv.args.head);
                 } else {
                     current.add(that);
