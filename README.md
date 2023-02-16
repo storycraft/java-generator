@@ -117,7 +117,8 @@ public Iterator<Integer> gen(Iterator<Integer> iter2) {
 
 ## Todo
 - [x] for
-- [x] foreach
+- [x] foreach iterable
+- [ ] foreach arrays
 - [x] if
 - [x] while
 - [x] synchronized
