@@ -5,10 +5,13 @@
  */
 package sh.pancake.generator.processor.ast.visitor;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
+import com.sun.source.tree.Tree.Kind;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.tree.JCTree;
@@ -17,8 +20,10 @@ import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
+import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 
+import sh.pancake.generator.processor.StepTag;
 import sh.pancake.generator.processor.TreeMakerUtil;
 import sh.pancake.generator.processor.ast.Constants;
 import sh.pancake.generator.processor.ast.NameAlloc;
@@ -35,6 +40,14 @@ public class GeneratorTransformer {
     private final GeneratorBlock block;
     private ListBuffer<JCStatement> current;
 
+    private final Map<Name, Integer> labelMap;
+    @Nullable
+    private StepTag defaultBreak;
+    @Nullable
+    private StepTag defaultContinue;
+
+    private final StatementTransformer statementTransformer;
+
     private GeneratorTransformer(TreeMaker treeMaker, Names names, NameAlloc nameAlloc, JCExpression retType) {
         this.treeMaker = treeMaker;
         this.names = names;
@@ -42,7 +55,7 @@ public class GeneratorTransformer {
 
         privateModifiers = treeMaker.Modifiers(Flags.PRIVATE);
 
-        this.block = new GeneratorBlock(
+        block = new GeneratorBlock(
                 treeMaker.VarDef(
                         privateModifiers,
                         nameAlloc.nextName(),
@@ -51,7 +64,13 @@ public class GeneratorTransformer {
                 retType,
                 nameAlloc.nextName(),
                 nameAlloc.nextName());
-        this.current = block.nextState().statements;
+        current = block.nextState().statements;
+
+        labelMap = new HashMap<>();
+        defaultBreak = null;
+        defaultContinue = null;
+
+        statementTransformer = new StatementTransformer();
     }
 
     public static GeneratorTransformer createRoot(Context cx, NameAlloc nameAlloc, JCExpression retType) {
@@ -62,8 +81,8 @@ public class GeneratorTransformer {
     }
 
     public GeneratorBlock transform(JCStatement statement) {
-        new StatementTransformer().transform(statement);
-        current.addAll(createJump(Constants.GENERATOR_STEP_FINISH));
+        statementTransformer.transform(statement);
+        current.addAll(createJump(createStepTag(Constants.GENERATOR_STEP_FINISH)));
 
         return block;
     }
@@ -87,10 +106,11 @@ public class GeneratorTransformer {
     }
 
     private void withNested(JCStatement statement, Consumer<JCStatement> consumer) {
-        ListBuffer<JCStatement> buf = current;
-        GeneratorState next = switchToNextState();
+        StepTag nextTag = createStepTag();
+        current.add(createAssignStep(nextTag));
 
-        buf.add(createAssignStep(next.id));
+        GeneratorState next = switchToNextState();
+        nextTag.setStep(next.id);
 
         GeneratorTransformer sub = new GeneratorTransformer(treeMaker, names, nameAlloc, block.resultType);
         GeneratorBlock subBlock = sub.transform(statement);
@@ -100,17 +120,23 @@ public class GeneratorTransformer {
         consumer.accept(subBlock.createNextStatement(treeMaker, names));
     }
 
-    private JCExpressionStatement createAssignStep(int id) {
+    private JCExpressionStatement createAssignStep(StepTag tag) {
         return treeMaker
-                .Exec(treeMaker.Assign(treeMaker.Ident(block.getStateFieldName()),
-                        treeMaker.Literal(TypeTag.INT, id)));
+                .Exec(treeMaker.Assign(treeMaker.Ident(block.getStateFieldName()), tag.getLiteral()));
     }
 
-    private List<JCStatement> createJump(int id) {
+    private List<JCStatement> createJump(StepTag tag) {
         return List.of(
-                treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(block.getStateFieldName()),
-                        treeMaker.Literal(TypeTag.INT, id))),
+                treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(block.getStateFieldName()), tag.getLiteral())),
                 treeMaker.Break(block.stateSwitchLabel));
+    }
+
+    private StepTag createStepTag() {
+        return createStepTag(-1);
+    }
+
+    private StepTag createStepTag(int id) {
+        return StepTag.create(treeMaker, id);
     }
 
     private GeneratorState switchToNextState() {
@@ -123,18 +149,21 @@ public class GeneratorTransformer {
         ListBuffer<JCStatement> buf = current;
         GeneratorState next = switchToNextState();
 
-        buf.add(createAssignStep(next.id));
+        buf.add(createAssignStep(createStepTag(next.id)));
         buf.add(treeMaker.Return(stepExpr));
     }
 
     private void stepAll(JCExpression stepAllExpr) {
-        ListBuffer<JCStatement> buf = current;
+        StepTag bodyTag = createStepTag();
+        current.add(createAssignStep(bodyTag));
         withTempVar(treeMaker.TypeApply(
                 TreeMakerUtil.createClassName(treeMaker, names, "java", "util", "Iterator"),
                 List.of(block.resultType)),
                 stepAllExpr,
                 (decl) -> {
                     GeneratorState next = switchToNextState();
+                    bodyTag.setStep(next.id);
+
                     JCMethodInvocation hasNextInv = treeMaker.Apply(List.nil(),
                             treeMaker.Select(treeMaker.Ident(decl.name), names.fromString("hasNext")),
                             List.nil());
@@ -142,8 +171,6 @@ public class GeneratorTransformer {
                     JCMethodInvocation nextInv = treeMaker.Apply(List.nil(),
                             treeMaker.Select(treeMaker.Ident(decl.name), names.fromString("next")),
                             List.nil());
-
-                    buf.add(createAssignStep(next.id));
 
                     current.add(
                             treeMaker.If(hasNextInv, treeMaker.Block(0, List.of(treeMaker.Return(nextInv))), null));
@@ -158,11 +185,15 @@ public class GeneratorTransformer {
         }
 
         public void transform(JCStatement statement) {
-            if (stepScanner.scanStep(statement)) {
+            if (mustHandle(statement) || stepScanner.scanStep(statement)) {
                 statement.accept(this);
             } else {
                 current.add(statement);
             }
+        }
+
+        private boolean mustHandle(JCStatement statement) {
+            return statement.getKind() == Kind.BREAK || statement.getKind() == Kind.CONTINUE;
         }
 
         private ListBuffer<JCStatement> withBranch(JCStatement branch) {
@@ -171,12 +202,12 @@ public class GeneratorTransformer {
             ListBuffer<JCStatement> branchBuf = new ListBuffer<>();
             current = branchBuf;
 
-            branch.accept(this);
+            transform(branch);
             ListBuffer<JCStatement> branchEndBuf = current;
 
             if (branchBuf != branchEndBuf) {
                 GeneratorState next = switchToNextState();
-                workCurrent.addAll(createJump(next.id));
+                workCurrent.addAll(createJump(createStepTag(next.id)));
             } else {
                 current = workCurrent;
             }
@@ -184,36 +215,38 @@ public class GeneratorTransformer {
             return branchBuf;
         }
 
-        private GeneratorState withStateBranch(JCStatement branch, boolean shouldJump) {
-            ListBuffer<JCStatement> workCurrent = current;
-
-            GeneratorState body = switchToNextState();
-            branch.accept(this);
-
-            GeneratorState next = switchToNextState();
-
-            if (shouldJump) {
-                workCurrent.addAll(createJump(next.id));
-            }
-
-            return body;
-        }
-
         @Override
         public void visitIf(JCIf that) {
             JCIf ifPart = treeMaker.If(that.cond, null, null);
             current.add(ifPart);
             if (that.elsepart != null) {
-                that.elsepart.accept(this);
+                transform(that.elsepart);
             }
 
             ifPart.thenpart = treeMaker.Block(0, withBranch(that.thenpart).toList());
         }
 
         private void doConditionalLoop(JCExpression cond, JCStatement body, boolean deferredCond) {
-            GeneratorState bodyState = withStateBranch(body, !deferredCond);
+            StepTag bodyTag = createStepTag();
 
-            current.add(treeMaker.If(cond, treeMaker.Block(0, createJump(bodyState.id)), null));
+            StepTag nextTag = defaultContinue = createStepTag();
+            StepTag endTag = defaultBreak = createStepTag();
+
+            if (!deferredCond) {
+                current.addAll(createJump(nextTag));
+            }
+
+            bodyTag.setStep(switchToNextState().id);
+            body.accept(this);
+
+            nextTag.setStep(switchToNextState().id);
+            current.add(treeMaker.If(cond,
+                    treeMaker.Block(0, createJump(bodyTag)), null));
+
+            endTag.setStep(switchToNextState().id);
+
+            defaultContinue = null;
+            defaultBreak = null;
         }
 
         @Override
@@ -269,10 +302,7 @@ public class GeneratorTransformer {
 
             for (JCStatement statement : that.stats) {
                 if (statement instanceof JCVariableDecl varDecl) {
-                    block.captureVariable(treeMaker.VarDef(privateModifiers, varDecl.name, varDecl.vartype, null));
-                    if (varDecl.init != null) {
-                        transform(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(varDecl.name), varDecl.init)));
-                    }
+                    statement.accept(this);
 
                     if (varDecl.vartype instanceof JCPrimitiveTypeTree) {
                         continue;
@@ -309,7 +339,7 @@ public class GeneratorTransformer {
 
         @Override
         public void visitReturn(JCReturn that) {
-            current.add(createAssignStep(Constants.GENERATOR_STEP_FINISH));
+            current.add(createAssignStep(createStepTag(Constants.GENERATOR_STEP_FINISH)));
             current.add(treeMaker.Return(null));
         }
 
@@ -321,7 +351,11 @@ public class GeneratorTransformer {
         @Override
         public void visitLabelled(JCLabeledStatement that) {
             GeneratorState next = switchToNextState();
-            that.accept(this);
+            Name label = that.label;
+
+            // labelMap.put(label, next.id);
+            that.body.accept(this);
+            // labelMap.remove(label);
         }
 
         @Override
@@ -332,10 +366,55 @@ public class GeneratorTransformer {
         }
 
         @Override
-        public void visitSwitch(JCSwitch that) {
-            ListBuffer<JCCase> cases = new ListBuffer<>();
+        public void visitVarDef(JCVariableDecl that) {
+            block.captureVariable(treeMaker.VarDef(privateModifiers, that.name, that.vartype, null));
+            if (that.init != null) {
+                transform(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(that.name), that.init)));
+            }
+        }
 
-            current.add(treeMaker.Switch(that.selector, cases.toList()));
+        @Override
+        public void visitSwitch(JCSwitch that) {
+            ListBuffer<JCStatement> buf = current;
+            StepTag endTag = defaultBreak = createStepTag();
+
+            Map<JCCase, GeneratorState> caseMap = new HashMap<>();
+
+            boolean containsDefault = false;
+            for (JCCase switchCase : that.cases) {
+                if (!containsDefault) {
+                    label: for (JCCaseLabel label : switchCase.labels) {
+                        if (label instanceof JCDefaultCaseLabel) {
+                            containsDefault = true;
+                            break label;
+                        }
+                    }
+                }
+
+                GeneratorState next = switchToNextState();
+                StepTag tag = createStepTag(switchToNextState().id);
+                for (JCStatement statement : switchCase.stats) {
+                    transform(statement);
+                }
+
+                caseMap.put(
+                        treeMaker.Case(
+                                switchCase.caseKind,
+                                switchCase.labels,
+                                createJump(tag),
+                                null),
+                        next);
+            }
+
+            GeneratorState end = switchToNextState();
+            endTag.setStep(end.id);
+
+            buf.add(treeMaker.Switch(that.selector, List.from(caseMap.keySet())));
+            if (!containsDefault) {
+                buf.addAll(createJump(endTag));
+            }
+
+            defaultBreak = null;
         }
 
         @Override
@@ -345,6 +424,34 @@ public class GeneratorTransformer {
         @Override
         public void visitClassDef(JCClassDecl that) {
             current.add(that);
+        }
+
+        @Override
+        public void visitContinue(JCContinue that) {
+            if (that.label != null) {
+                Integer step = labelMap.get(that.label);
+                if (step != null) {
+                    current.addAll(createJump(createStepTag(step)));
+                }
+
+                return;
+            }
+
+            current.addAll(createJump(defaultContinue));
+        }
+
+        @Override
+        public void visitBreak(JCBreak that) {
+            if (that.label != null) {
+                Integer step = labelMap.get(that.label);
+                if (step != null) {
+                    current.addAll(createJump(createStepTag(step)));
+                }
+
+                return;
+            }
+
+            current.addAll(createJump(defaultBreak));
         }
 
         @Override
