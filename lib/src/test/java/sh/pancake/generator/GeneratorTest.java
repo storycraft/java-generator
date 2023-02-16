@@ -32,6 +32,15 @@ public class GeneratorTest {
             for (int i = 0; i < 5; i++) {
     
             }
+
+            switch (a) {
+                default: step(99);
+
+                case 1: step(1);
+                case 2: step(3); break;
+                case 3: step(4);
+                case 4: step(6);
+            }
             
             String i = "1";
     

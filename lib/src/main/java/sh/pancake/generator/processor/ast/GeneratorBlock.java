@@ -8,6 +8,8 @@ package sh.pancake.generator.processor.ast;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import javax.annotation.Nullable;
+
 import com.sun.source.tree.CaseTree.CaseKind;
 import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.tree.TreeMaker;
@@ -46,6 +48,15 @@ public class GeneratorBlock {
 
     public Name getStateFieldName() {
         return stateField.name;
+    }
+
+    @Nullable
+    public GeneratorState currentState() {
+        if (states.isEmpty()) {
+            return null;
+        }
+
+        return states.get(states.size() - 1);
     }
 
     public GeneratorState nextState() {

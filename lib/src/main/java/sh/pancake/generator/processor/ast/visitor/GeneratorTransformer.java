@@ -23,6 +23,7 @@ import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 
+import lombok.AllArgsConstructor;
 import sh.pancake.generator.processor.StepTag;
 import sh.pancake.generator.processor.TreeMakerUtil;
 import sh.pancake.generator.processor.ast.Constants;
@@ -40,7 +41,7 @@ public class GeneratorTransformer {
     private final GeneratorBlock block;
     private ListBuffer<JCStatement> current;
 
-    private final Map<Name, Integer> labelMap;
+    private final Map<Name, Label> labelMap;
     @Nullable
     private StepTag defaultBreak;
     @Nullable
@@ -350,12 +351,19 @@ public class GeneratorTransformer {
 
         @Override
         public void visitLabelled(JCLabeledStatement that) {
-            GeneratorState next = switchToNextState();
-            Name label = that.label;
+            Label label = new Label(createStepTag(switchToNextState().id), createStepTag());
+            Name name = that.label;
 
-            // labelMap.put(label, next.id);
+            labelMap.put(name, label);
+
             that.body.accept(this);
-            // labelMap.remove(label);
+
+            GeneratorState currentState = block.currentState();
+            if (currentState != null) {
+                label.end.setStep(currentState.id);
+            }
+
+            labelMap.remove(name);
         }
 
         @Override
@@ -403,13 +411,13 @@ public class GeneratorTransformer {
                         null));
             }
 
-            GeneratorState end = switchToNextState();
-            endTag.setStep(end.id);
-
             buf.add(treeMaker.Switch(that.selector, cases.toList()));
             if (!containsDefault) {
                 buf.addAll(createJump(endTag));
             }
+
+            GeneratorState end = switchToNextState();
+            endTag.setStep(end.id);
 
             defaultBreak = null;
         }
@@ -426,9 +434,9 @@ public class GeneratorTransformer {
         @Override
         public void visitContinue(JCContinue that) {
             if (that.label != null) {
-                Integer step = labelMap.get(that.label);
-                if (step != null) {
-                    current.addAll(createJump(createStepTag(step)));
+                Label label = labelMap.get(that.label);
+                if (label != null) {
+                    current.addAll(createJump(label.start));
                 }
 
                 return;
@@ -440,9 +448,9 @@ public class GeneratorTransformer {
         @Override
         public void visitBreak(JCBreak that) {
             if (that.label != null) {
-                Integer step = labelMap.get(that.label);
-                if (step != null) {
-                    current.addAll(createJump(createStepTag(step)));
+                Label label = labelMap.get(that.label);
+                if (label != null) {
+                    current.addAll(createJump(label.end));
                 }
 
                 return;
@@ -455,5 +463,11 @@ public class GeneratorTransformer {
         public void visitTree(JCTree that) {
             throw new RuntimeException(that.getKind() + " is not implemented");
         }
+    }
+
+    @AllArgsConstructor
+    private static class Label {
+        public final StepTag start;
+        public final StepTag end;
     }
 }
