@@ -230,8 +230,15 @@ public class GeneratorTransformer {
         private void doConditionalLoop(JCExpression cond, JCStatement body, boolean deferredCond) {
             StepTag bodyTag = createStepTag();
 
-            StepTag nextTag = defaultContinue = createStepTag();
-            StepTag endTag = defaultBreak = createStepTag();
+            StepTag nextTag = createStepTag();
+            StepTag endTag = createStepTag();
+            if (defaultContinue == null) {
+                defaultContinue = nextTag;
+            }
+
+            if (defaultBreak == null) {
+                defaultBreak = endTag;
+            }
 
             if (!deferredCond) {
                 current.addAll(createJump(nextTag));
@@ -457,6 +464,11 @@ public class GeneratorTransformer {
             }
 
             current.addAll(createJump(defaultBreak));
+        }
+
+        @Override
+        public void visitTry(JCTry that) {
+            
         }
 
         @Override
