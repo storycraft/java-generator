@@ -253,8 +253,13 @@ public class GeneratorTransformer {
 
             endTag.setStep(switchToNextState().id);
 
-            defaultContinue = null;
-            defaultBreak = null;
+            if (defaultContinue == nextTag) {
+                defaultContinue = null;
+            }
+
+            if (defaultBreak == endTag) {
+                defaultBreak = null;
+            }
         }
 
         @Override
