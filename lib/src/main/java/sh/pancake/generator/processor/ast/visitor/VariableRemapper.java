@@ -90,7 +90,7 @@ public class VariableRemapper extends TreeTranslator {
 
     @Override
     public void visitVarDef(JCVariableDecl tree) {
-        Name mappedName = nameAlloc.nextName();
+        Name mappedName = nameAlloc.nextName(tree.name.toString());
         Map<Name, Name> current = scopeVariableMap.peekLast();
         if (current == null) {
             current = push();

@@ -87,7 +87,7 @@ public class GeneratorProcessor extends AbstractProcessor {
         GeneratorTransformer transformer = GeneratorTransformer.createRoot(cx, nameAlloc, iteratorType);
         method.body.stats = List
                 .of(treeMaker
-                        .Return(new GeneratorBuilder(cx, nameAlloc.nextName(), transformer.transform(method.body))
+                        .Return(new GeneratorBuilder(cx, nameAlloc, transformer.transform(method.body))
                                 .build()));
     }
 }

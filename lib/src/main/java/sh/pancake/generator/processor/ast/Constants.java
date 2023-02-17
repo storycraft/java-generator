@@ -14,6 +14,12 @@ public class Constants {
 
     public static final String GENERATOR_INNER_NEXT = "__next";
 
+    public static final String GENERATOR_STATE = "state";
+    public static final String GENERATOR_LOOP = "loop";
+    public static final String GENERATOR_STATE_SWITCH = "switch";
+    public static final String GENERATOR_TMP = "tmp";
+    public static final String GENERATOR_RESULT = "result";
+
     public static final String ERR_NEXT_ON_FINISH_MESSAGE = "Called next on finished generator";
     public static final String ERR_UNREACHABLE = "Unreachable generator step";
 }

@@ -58,12 +58,12 @@ public class GeneratorTransformer {
         block = new GeneratorBlock(
                 treeMaker.VarDef(
                         privateModifiers,
-                        nameAlloc.nextName(),
+                        nameAlloc.nextName(Constants.GENERATOR_STATE),
                         treeMaker.TypeIdent(TypeTag.INT),
                         treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_START)),
                 retType,
-                nameAlloc.nextName(),
-                nameAlloc.nextName());
+                nameAlloc.nextName(Constants.GENERATOR_LOOP),
+                nameAlloc.nextName(Constants.GENERATOR_STATE_SWITCH));
         current = block.nextState().statements;
 
         labelMap = new HashMap<>();
@@ -88,7 +88,7 @@ public class GeneratorTransformer {
     }
 
     private void withTempVar(JCExpression type, @Nullable JCExpression init, Consumer<JCVariableDecl> consumer) {
-        JCVariableDecl decl = treeMaker.VarDef(privateModifiers, nameAlloc.nextName(), type, null);
+        JCVariableDecl decl = treeMaker.VarDef(privateModifiers, nameAlloc.nextName(Constants.GENERATOR_TMP), type, null);
         block.captureVariable(decl);
 
         if (init != null) {

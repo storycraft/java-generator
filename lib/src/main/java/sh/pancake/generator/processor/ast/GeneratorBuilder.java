@@ -27,13 +27,14 @@ public class GeneratorBuilder {
 
     private final JCVariableDecl resultDecl;
 
-    public GeneratorBuilder(Context cx, Name resultFieldName, GeneratorBlock block) {
+    public GeneratorBuilder(Context cx, NameAlloc alloc, GeneratorBlock block) {
         treeMaker = TreeMaker.instance(cx);
         names = Names.instance(cx);
 
         this.block = block;
 
-        resultDecl = treeMaker.VarDef(treeMaker.Modifiers(Flags.PRIVATE), resultFieldName, block.resultType, null);
+        resultDecl = treeMaker.VarDef(treeMaker.Modifiers(Flags.PRIVATE),
+                alloc.nextName(Constants.GENERATOR_RESULT), block.resultType, null);
     }
 
     private JCAnnotation createOverride() {

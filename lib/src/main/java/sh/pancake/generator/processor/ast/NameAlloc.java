@@ -10,7 +10,7 @@ import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 
 public class NameAlloc {
-    private static final String NAME_PREFIX = "@";
+    private static final String NAME_SEPARATOR = "@";
 
     private final Names names;
 
@@ -22,7 +22,7 @@ public class NameAlloc {
         nextNameId = 0;
     }
 
-    public Name nextName() {
-        return names.fromString(NAME_PREFIX + (nextNameId++));
+    public Name nextName(String name) {
+        return names.fromString(name + NAME_SEPARATOR + (nextNameId++));
     }
 }
