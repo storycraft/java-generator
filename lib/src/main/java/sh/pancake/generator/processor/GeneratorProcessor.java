@@ -28,7 +28,6 @@ import sh.pancake.generator.Generator;
 import sh.pancake.generator.processor.ast.GeneratorBuilder;
 import sh.pancake.generator.processor.ast.NameMapper;
 import sh.pancake.generator.processor.ast.visitor.GeneratorTransformer;
-import sh.pancake.generator.processor.ast.visitor.VariableRemapper;
 
 @SupportedAnnotationTypes("sh.pancake.generator.Generator")
 public class GeneratorProcessor extends AbstractProcessor {
@@ -81,8 +80,6 @@ public class GeneratorProcessor extends AbstractProcessor {
     private void processMethod(JCMethodDecl method) {
         JCExpression iteratorType = extractIteratorType(method);
         NameMapper nameMapper = new NameMapper(cx);
-
-        new VariableRemapper(nameMapper).translate(method.body);
 
         GeneratorTransformer transformer = GeneratorTransformer.createRoot(cx, nameMapper, iteratorType);
         method.body.stats = List

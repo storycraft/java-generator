@@ -14,6 +14,7 @@ import javax.annotation.Nullable;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.TreeCopier;
 import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
@@ -81,6 +82,13 @@ public class GeneratorTransformer {
     }
 
     public GeneratorBlock transform(JCStatement statement) {
+        JCStatement copied = new TreeCopier<>(treeMaker).copy(statement);
+        new VariableRemapper(nameMapper).translate(copied);
+
+        return transformInner(statement);
+    }
+
+    private GeneratorBlock transformInner(JCStatement statement) {
         statementTransformer.transform(statement);
         current.addAll(createJump(createStepTag(Constants.GENERATOR_STEP_FINISH)));
 
@@ -113,7 +121,7 @@ public class GeneratorTransformer {
         nextTag.setStep(next.id);
 
         GeneratorTransformer sub = new GeneratorTransformer(treeMaker, names, nameMapper, block.resultType);
-        GeneratorBlock subBlock = sub.transform(statement);
+        GeneratorBlock subBlock = sub.transformInner(statement);
 
         block.captureAll(subBlock.capturedList());
 
@@ -468,7 +476,7 @@ public class GeneratorTransformer {
 
         @Override
         public void visitTry(JCTry that) {
-            
+
         }
 
         @Override
