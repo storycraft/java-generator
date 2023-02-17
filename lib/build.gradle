@@ -51,29 +51,13 @@ eclipse.classpath.file {
     whenMerged {
         entries.find{ it.path ==~ '.*JRE_CONTAINER.*' }.each {
             it.entryAttributes['module'] = true
-            it.entryAttributes['add-exports'] = [
-                'jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED',
-                'jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED',
-                'jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED',
-                'jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED',
-                'jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED',
-                'jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED',
-                'jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED',
-            ]
-        }
-    }
-
-    withXml {
-        xml -> xml.asNode().depthFirst()
-        .findAll { it.name() == "attribute" && it.attribute("value") instanceof List }
-        .each {
-            def name = it.attribute("name")
-            def value = it.attribute("value")
-            it.replaceNode {
-                value.each {
-                    attribute(name: name, value: it)
-                }
-            }
+            it.entryAttributes['add-exports'] = 'jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED:' +
+            'jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED:' +
+            'jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED:' +
+            'jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED:' +
+            'jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED:' +
+            'jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED:' +
+            'jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED'
         }
     }
 }
