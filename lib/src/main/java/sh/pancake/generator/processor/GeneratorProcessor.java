@@ -8,6 +8,7 @@ package sh.pancake.generator.processor;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -15,6 +16,7 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic.Kind;
 
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
@@ -49,8 +51,12 @@ public class GeneratorProcessor extends AbstractProcessor {
 
         Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(Generator.class);
 
-        for (Element e : elements) {
-            processMethod(trees.getTree((ExecutableElement) e));
+        try {
+            for (Element e : elements) {
+                processMethod(trees.getTree((ExecutableElement) e));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Cannot explode method into generator", e);
         }
 
         return false;

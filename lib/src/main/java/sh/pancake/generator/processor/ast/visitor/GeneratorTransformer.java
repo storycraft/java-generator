@@ -113,21 +113,6 @@ public class GeneratorTransformer {
         current.add(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(decl.name), treeMaker.Literal(TypeTag.BOT, null))));
     }
 
-    private void withNested(JCStatement statement, Consumer<JCStatement> consumer) {
-        StepTag nextTag = createStepTag();
-        current.add(createAssignStep(nextTag));
-
-        GeneratorState next = switchToNextState();
-        nextTag.setStep(next.id);
-
-        GeneratorTransformer sub = new GeneratorTransformer(treeMaker, names, nameMapper, block.resultType);
-        GeneratorBlock subBlock = sub.transformInner(statement);
-
-        block.captureAll(subBlock.capturedList());
-
-        consumer.accept(subBlock.createNextStatement(treeMaker, names));
-    }
-
     private JCExpressionStatement createAssignStep(StepTag tag) {
         return treeMaker
                 .Exec(treeMaker.Assign(treeMaker.Ident(block.getStateFieldName()), tag.getLiteral()));
@@ -383,9 +368,8 @@ public class GeneratorTransformer {
 
         @Override
         public void visitSynchronized(JCSynchronized that) {
-            withNested(that.body, (statement) -> {
-                current.add(treeMaker.Synchronized(that.lock, treeMaker.Block(0, List.of(statement))));
-            });
+            // Cannot step inside synchronized block
+            current.add(that);
         }
 
         @Override
