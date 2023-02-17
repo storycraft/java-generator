@@ -457,6 +457,11 @@ public class GeneratorTransformer {
                 return;
             }
 
+            if (defaultContinue == null) {
+                current.add(treeMaker.Exec(treeMaker.Erroneous(List.of(that))));
+                return;
+            }
+
             current.addAll(createJump(defaultContinue));
         }
 
@@ -468,6 +473,11 @@ public class GeneratorTransformer {
                     current.addAll(createJump(label.end));
                 }
 
+                return;
+            }
+
+            if (defaultBreak == null) {
+                current.add(treeMaker.Exec(treeMaker.Erroneous(List.of(that))));
                 return;
             }
 
