@@ -15,15 +15,15 @@ import com.sun.tools.javac.tree.TreeTranslator;
 import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.util.Name;
 
-import sh.pancake.generator.processor.ast.NameAlloc;
+import sh.pancake.generator.processor.ast.NameMapper;
 
 public class VariableRemapper extends TreeTranslator {
-    private final NameAlloc nameAlloc;
+    private final NameMapper nameMapper;
 
     private final LinkedList<Map<Name, Name>> scopeVariableMap;
 
-    public VariableRemapper(NameAlloc nameAlloc) {
-        this.nameAlloc = nameAlloc;
+    public VariableRemapper(NameMapper nameMapper) {
+        this.nameMapper = nameMapper;
         this.scopeVariableMap = new LinkedList<>();
     }
 
@@ -90,7 +90,7 @@ public class VariableRemapper extends TreeTranslator {
 
     @Override
     public void visitVarDef(JCVariableDecl tree) {
-        Name mappedName = nameAlloc.nextName(tree.name.toString());
+        Name mappedName = nameMapper.map(tree.name.toString());
         Map<Name, Name> current = scopeVariableMap.peekLast();
         if (current == null) {
             current = push();

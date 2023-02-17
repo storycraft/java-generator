@@ -26,7 +26,7 @@ import com.sun.tools.javac.util.Names;
 
 import sh.pancake.generator.Generator;
 import sh.pancake.generator.processor.ast.GeneratorBuilder;
-import sh.pancake.generator.processor.ast.NameAlloc;
+import sh.pancake.generator.processor.ast.NameMapper;
 import sh.pancake.generator.processor.ast.visitor.GeneratorTransformer;
 import sh.pancake.generator.processor.ast.visitor.VariableRemapper;
 
@@ -80,14 +80,14 @@ public class GeneratorProcessor extends AbstractProcessor {
 
     private void processMethod(JCMethodDecl method) {
         JCExpression iteratorType = extractIteratorType(method);
-        NameAlloc nameAlloc = new NameAlloc(cx);
+        NameMapper nameMapper = new NameMapper(cx);
 
-        new VariableRemapper(nameAlloc).translate(method.body);
+        new VariableRemapper(nameMapper).translate(method.body);
 
-        GeneratorTransformer transformer = GeneratorTransformer.createRoot(cx, nameAlloc, iteratorType);
+        GeneratorTransformer transformer = GeneratorTransformer.createRoot(cx, nameMapper, iteratorType);
         method.body.stats = List
                 .of(treeMaker
-                        .Return(new GeneratorBuilder(cx, nameAlloc, transformer.transform(method.body))
+                        .Return(new GeneratorBuilder(cx, nameMapper, transformer.transform(method.body))
                                 .build()));
     }
 }

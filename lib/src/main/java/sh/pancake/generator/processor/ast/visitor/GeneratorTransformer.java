@@ -26,14 +26,14 @@ import lombok.AllArgsConstructor;
 import sh.pancake.generator.processor.StepTag;
 import sh.pancake.generator.processor.TreeMakerUtil;
 import sh.pancake.generator.processor.ast.Constants;
-import sh.pancake.generator.processor.ast.NameAlloc;
+import sh.pancake.generator.processor.ast.NameMapper;
 import sh.pancake.generator.processor.ast.GeneratorBlock;
 import sh.pancake.generator.processor.ast.GeneratorState;
 
 public class GeneratorTransformer {
     private final TreeMaker treeMaker;
     private final Names names;
-    private final NameAlloc nameAlloc;
+    private final NameMapper nameMapper;
 
     private final JCModifiers privateModifiers;
 
@@ -48,22 +48,22 @@ public class GeneratorTransformer {
 
     private final StatementTransformer statementTransformer;
 
-    private GeneratorTransformer(TreeMaker treeMaker, Names names, NameAlloc nameAlloc, JCExpression retType) {
+    private GeneratorTransformer(TreeMaker treeMaker, Names names, NameMapper nameMapper, JCExpression retType) {
         this.treeMaker = treeMaker;
         this.names = names;
-        this.nameAlloc = nameAlloc;
+        this.nameMapper = nameMapper;
 
         privateModifiers = treeMaker.Modifiers(Flags.PRIVATE);
 
         block = new GeneratorBlock(
                 treeMaker.VarDef(
                         privateModifiers,
-                        nameAlloc.nextName(Constants.GENERATOR_STATE),
+                        nameMapper.map(Constants.GENERATOR_STATE),
                         treeMaker.TypeIdent(TypeTag.INT),
                         treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_START)),
                 retType,
-                nameAlloc.nextName(Constants.GENERATOR_LOOP),
-                nameAlloc.nextName(Constants.GENERATOR_STATE_SWITCH));
+                nameMapper.map(Constants.GENERATOR_LOOP),
+                nameMapper.map(Constants.GENERATOR_STATE_SWITCH));
         current = block.nextState().statements;
 
         labelMap = new HashMap<>();
@@ -73,11 +73,11 @@ public class GeneratorTransformer {
         statementTransformer = new StatementTransformer();
     }
 
-    public static GeneratorTransformer createRoot(Context cx, NameAlloc nameAlloc, JCExpression retType) {
+    public static GeneratorTransformer createRoot(Context cx, NameMapper nameMapper, JCExpression retType) {
         TreeMaker treeMaker = TreeMaker.instance(cx);
         Names names = Names.instance(cx);
 
-        return new GeneratorTransformer(treeMaker, names, nameAlloc, retType);
+        return new GeneratorTransformer(treeMaker, names, nameMapper, retType);
     }
 
     public GeneratorBlock transform(JCStatement statement) {
@@ -88,7 +88,7 @@ public class GeneratorTransformer {
     }
 
     private void withTempVar(JCExpression type, @Nullable JCExpression init, Consumer<JCVariableDecl> consumer) {
-        JCVariableDecl decl = treeMaker.VarDef(privateModifiers, nameAlloc.nextName(Constants.GENERATOR_TMP), type, null);
+        JCVariableDecl decl = treeMaker.VarDef(privateModifiers, nameMapper.map(Constants.GENERATOR_TMP), type, null);
         block.captureVariable(decl);
 
         if (init != null) {
@@ -112,7 +112,7 @@ public class GeneratorTransformer {
         GeneratorState next = switchToNextState();
         nextTag.setStep(next.id);
 
-        GeneratorTransformer sub = new GeneratorTransformer(treeMaker, names, nameAlloc, block.resultType);
+        GeneratorTransformer sub = new GeneratorTransformer(treeMaker, names, nameMapper, block.resultType);
         GeneratorBlock subBlock = sub.transform(statement);
 
         block.captureAll(subBlock.capturedList());

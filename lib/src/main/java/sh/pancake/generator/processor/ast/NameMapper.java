@@ -9,20 +9,20 @@ import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 
-public class NameAlloc {
+public class NameMapper {
     private static final String NAME_SEPARATOR = "@";
 
     private final Names names;
 
     private int nextNameId;
 
-    public NameAlloc(Context cx) {
+    public NameMapper(Context cx) {
         names = Names.instance(cx);
 
         nextNameId = 0;
     }
 
-    public Name nextName(String name) {
+    public Name map(String name) {
         return names.fromString(name + NAME_SEPARATOR + (nextNameId++));
     }
 }
