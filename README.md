@@ -128,6 +128,7 @@ public Iterator<Integer> gen(Iterator<Integer> iter2) {
   - [ ] catch
   - [ ] try with resources
 - [x] switch
+- [ ] switch expression
 - [x] continue, break
 - [x] label
 - [ ] Async runtime with await using generator
