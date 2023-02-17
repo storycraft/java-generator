@@ -376,7 +376,7 @@ public class GeneratorTransformer {
         public void visitVarDef(JCVariableDecl that) {
             block.captureVariable(treeMaker.VarDef(privateModifiers, that.name, that.vartype, null));
             if (that.init != null) {
-                transform(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(that.name), that.init)));
+                current.add(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(that.name), that.init)));
             }
         }
 
