@@ -4,8 +4,12 @@ Generator(Iterator) builder for Java
 Add @Generator annotation to convert method to generator. Target method's return type must be Iterator.
 
 This annotation processor hack into javac internal api to modifiy AST(abstract syntax tree)
+
 ## Implemention detail
 Annotation processor converts normal method into method returning complex state machine iterator.
+
+## Limitations
+1. You cannot use yield inside of synchronized block. The monitor lock cannot be held across method. Use lock object instead.
 
 ## Todo
 - [x] for
@@ -24,6 +28,7 @@ Annotation processor converts normal method into method returning complex state 
 - [x] continue, break
 - [x] label
 - [ ] Async runtime with await using generator
+
 ...
 
 ## License
