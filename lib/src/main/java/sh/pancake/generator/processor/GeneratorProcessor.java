@@ -81,7 +81,7 @@ public class GeneratorProcessor extends AbstractProcessor {
     }
 
     private JCAnnotation createGeneratedAnnotation() {
-        return treeMaker.TypeAnnotation(
+        return treeMaker.Annotation(
                 TreeMakerUtil.createClassName(treeMaker, names, "javax", "annotation", "processing", "Generated"),
                 List.of(treeMaker.Literal(GeneratorProcessor.class.getName())));
     }
@@ -91,7 +91,7 @@ public class GeneratorProcessor extends AbstractProcessor {
         NameMapper nameMapper = new NameMapper(cx);
 
         GeneratorTransformer transformer = GeneratorTransformer.createRoot(cx, nameMapper, iteratorType);
-        method.mods.annotations.add(createGeneratedAnnotation());
+        method.mods.annotations = method.mods.annotations.prepend(createGeneratedAnnotation());
         method.body.stats = List
                 .of(treeMaker
                         .Return(new GeneratorBuilder(cx, nameMapper, transformer.transform(method.body))
