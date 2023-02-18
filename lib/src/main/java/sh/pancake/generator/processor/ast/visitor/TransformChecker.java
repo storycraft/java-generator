@@ -45,6 +45,13 @@ public class TransformChecker extends TreeScanner {
     }
 
     @Override
+    public void visitReturn(JCReturn tree) {
+        if (!transform) {
+            transform = true;
+        }
+    }
+
+    @Override
     public void visitApply(JCMethodInvocation tree) {
         String method = tree.meth.toString();
 
