@@ -366,12 +366,6 @@ public class GeneratorTransformer {
         }
 
         @Override
-        public void visitSynchronized(JCSynchronized that) {
-            // Cannot step inside synchronized block
-            current.add(that);
-        }
-
-        @Override
         public void visitVarDef(JCVariableDecl that) {
             block.captureVariable(treeMaker.VarDef(internalModifiers, that.name, that.vartype, null));
             if (that.init != null) {
