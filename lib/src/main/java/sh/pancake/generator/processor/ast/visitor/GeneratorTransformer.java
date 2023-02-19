@@ -375,7 +375,7 @@ public class GeneratorTransformer {
             ListBuffer<JCStatement> buf = current;
             ListBuffer<JCStatement> bodyBuf = withBranch(that.body);
             if (current != buf) {
-                log.rawError(that.pos(), "Cannot yield inside of synchronized block");
+                log.rawError(that.pos, "Cannot yield inside of synchronized block");
                 return;
             }
 
