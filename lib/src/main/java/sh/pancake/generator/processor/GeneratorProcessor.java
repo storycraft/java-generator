@@ -49,12 +49,8 @@ public class GeneratorProcessor extends AbstractProcessor {
 
         Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(Generator.class);
 
-        try {
-            for (Element e : elements) {
-                processMethod(trees.getTree((ExecutableElement) e));
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Cannot explode method into generator", e);
+        for (Element e : elements) {
+            processMethod(trees.getTree((ExecutableElement) e));
         }
 
         return false;

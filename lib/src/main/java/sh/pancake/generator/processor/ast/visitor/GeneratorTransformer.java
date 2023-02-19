@@ -20,6 +20,7 @@ import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
+import com.sun.tools.javac.util.Log;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 
@@ -34,6 +35,7 @@ import sh.pancake.generator.processor.ast.GeneratorState;
 public class GeneratorTransformer {
     private final TreeMaker treeMaker;
     private final Names names;
+    private final Log log;
     private final NameMapper nameMapper;
 
     private final JCModifiers internalModifiers;
@@ -49,9 +51,11 @@ public class GeneratorTransformer {
 
     private final StatementTransformer statementTransformer;
 
-    private GeneratorTransformer(TreeMaker treeMaker, Names names, NameMapper nameMapper, JCExpression retType) {
+    private GeneratorTransformer(TreeMaker treeMaker, Names names, Log log, NameMapper nameMapper,
+            JCExpression retType) {
         this.treeMaker = treeMaker;
         this.names = names;
+        this.log = log;
         this.nameMapper = nameMapper;
 
         internalModifiers = treeMaker.Modifiers(Flags.PRIVATE);
@@ -76,8 +80,9 @@ public class GeneratorTransformer {
     public static GeneratorTransformer createRoot(Context cx, NameMapper nameMapper, JCExpression retType) {
         TreeMaker treeMaker = TreeMaker.instance(cx);
         Names names = Names.instance(cx);
+        Log log = Log.instance(cx);
 
-        return new GeneratorTransformer(treeMaker, names, nameMapper, retType);
+        return new GeneratorTransformer(treeMaker, names, log, nameMapper, retType);
     }
 
     public GeneratorBlock transform(JCStatement statement) {
@@ -366,6 +371,18 @@ public class GeneratorTransformer {
         }
 
         @Override
+        public void visitSynchronized(JCSynchronized that) {
+            ListBuffer<JCStatement> buf = current;
+            ListBuffer<JCStatement> bodyBuf = withBranch(that.body);
+            if (current != buf) {
+                log.rawError(that.pos(), "Cannot yield inside of synchronized block");
+                return;
+            }
+
+            current.add(treeMaker.Synchronized(that.lock, treeMaker.Block(0, bodyBuf.toList())));
+        }
+
+        @Override
         public void visitVarDef(JCVariableDecl that) {
             block.captureVariable(treeMaker.VarDef(internalModifiers, that.name, that.vartype, null));
             if (that.init != null) {
@@ -435,7 +452,7 @@ public class GeneratorTransformer {
             }
 
             if (defaultContinue == null) {
-                current.add(treeMaker.Exec(treeMaker.Erroneous(List.of(that))));
+                log.rawError(that.pos, "Invalid continue");
                 return;
             }
 
@@ -454,7 +471,7 @@ public class GeneratorTransformer {
             }
 
             if (defaultBreak == null) {
-                current.add(treeMaker.Exec(treeMaker.Erroneous(List.of(that))));
+                log.rawError(that.pos, "Invalid break");
                 return;
             }
 
