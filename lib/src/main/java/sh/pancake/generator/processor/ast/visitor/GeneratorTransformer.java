@@ -36,7 +36,7 @@ public class GeneratorTransformer {
     private final Names names;
     private final NameMapper nameMapper;
 
-    private final JCModifiers privateModifiers;
+    private final JCModifiers internalModifiers;
 
     private final GeneratorBlock block;
     private ListBuffer<JCStatement> current;
@@ -54,11 +54,11 @@ public class GeneratorTransformer {
         this.names = names;
         this.nameMapper = nameMapper;
 
-        privateModifiers = treeMaker.Modifiers(Flags.PRIVATE);
+        internalModifiers = treeMaker.Modifiers(Flags.PRIVATE);
 
         block = new GeneratorBlock(
                 treeMaker.VarDef(
-                        privateModifiers,
+                        internalModifiers,
                         nameMapper.map(Constants.GENERATOR_STATE),
                         treeMaker.TypeIdent(TypeTag.INT),
                         treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_START)),
@@ -96,7 +96,7 @@ public class GeneratorTransformer {
     }
 
     private void withTempVar(JCExpression type, @Nullable JCExpression init, Consumer<JCVariableDecl> consumer) {
-        JCVariableDecl decl = treeMaker.VarDef(privateModifiers, nameMapper.map(Constants.GENERATOR_TMP), type, null);
+        JCVariableDecl decl = treeMaker.VarDef(internalModifiers, nameMapper.map(Constants.GENERATOR_TMP), type, null);
         block.captureVariable(decl);
 
         if (init != null) {
@@ -374,7 +374,7 @@ public class GeneratorTransformer {
 
         @Override
         public void visitVarDef(JCVariableDecl that) {
-            block.captureVariable(treeMaker.VarDef(privateModifiers, that.name, that.vartype, null));
+            block.captureVariable(treeMaker.VarDef(internalModifiers, that.name, that.vartype, null));
             if (that.init != null) {
                 current.add(treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(that.name), that.init)));
             }
