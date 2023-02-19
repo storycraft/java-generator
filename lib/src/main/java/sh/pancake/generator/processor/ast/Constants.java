@@ -9,6 +9,8 @@ public class Constants {
     public static final int GENERATOR_STEP_FINISH = 0;
     public static final int GENERATOR_STEP_START = 1;
 
+    public static final String GENERATOR_CLASS_NAME = "$Generator";
+
     public static final String GENERATOR_YIELD = "step";
     public static final String GENERATOR_YIELD_ALL = "stepAll";
 

@@ -60,11 +60,24 @@ public class GeneratorBuilder {
                 null);
     }
 
-    public JCNewClass build() {
-        ListBuffer<JCTree> iteratorBuf = new ListBuffer<>();
+    public JCBlock buildMethodBlock() {
+        JCClassDecl classDecl = buildClassDecl();
 
-        iteratorBuf.addAll(block.capturedList());
-        iteratorBuf.add(resultDecl);
+        return treeMaker.Block(0, List.of(
+                classDecl,
+                treeMaker.Return(treeMaker.NewClass(
+                        null,
+                        List.nil(),
+                        treeMaker.Ident(classDecl.name),
+                        List.nil(),
+                        null))));
+    }
+
+    public JCClassDecl buildClassDecl() {
+        ListBuffer<JCTree> classBuf = new ListBuffer<>();
+
+        classBuf.addAll(block.capturedList());
+        classBuf.add(resultDecl);
 
         JCModifiers privateModifiers = treeMaker.Modifiers(Flags.PRIVATE);
 
@@ -76,7 +89,7 @@ public class GeneratorBuilder {
                         block.createNextStatement(treeMaker, names),
                         treeMaker.Return(treeMaker.Literal(TypeTag.BOT, null)))));
 
-        iteratorBuf.add(innerNextDecl);
+        classBuf.add(innerNextDecl);
 
         JCMethodInvocation invInnerNext = treeMaker.Apply(
                 List.nil(),
@@ -102,7 +115,7 @@ public class GeneratorBuilder {
                                 resultFieldIdent,
                                 nullExpr)))));
 
-        iteratorBuf.add(hasNextDecl);
+        classBuf.add(hasNextDecl);
 
         Name resTempName = names.fromString("res");
 
@@ -127,24 +140,31 @@ public class GeneratorBuilder {
                                 resultFieldIdent, nullExpr)),
                         treeMaker.Return(treeMaker.Ident(resTempName)))));
 
-        iteratorBuf.add(nextDecl);
+        classBuf.add(nextDecl);
 
-        return treeMaker.NewClass(
-                null,
-                List.nil(),
+        JCMethodDecl iteratorDecl = createMethod(
+                treeMaker.Modifiers(Flags.PUBLIC, List.of(createOverride())),
                 treeMaker.TypeApply(
                         TreeMakerUtil.createClassName(treeMaker, names, "java", "util",
                                 "Iterator"),
                         List.of(resultDecl.vartype)),
+                "iterator",
+                treeMaker.Block(0, List.of(treeMaker.Return(treeMaker.Ident(names._this)))));
+
+        classBuf.add(iteratorDecl);
+
+        return treeMaker.ClassDef(
+                treeMaker.Modifiers(Flags.FINAL),
+                names.fromString(Constants.GENERATOR_CLASS_NAME),
                 List.nil(),
-                treeMaker.ClassDef(
-                        treeMaker.Modifiers(0),
-                        names.empty,
-                        List.nil(),
-                        null,
-                        List.nil(),
-                        List.nil(),
-                        iteratorBuf.toList()));
+                null,
+                List.of(
+                        TreeMakerUtil.createClassName(treeMaker, names, "java", "lang",
+                                "Iterable"),
+                        TreeMakerUtil.createClassName(treeMaker, names, "java", "util",
+                                "Iterator")),
+                List.nil(),
+                classBuf.toList());
     }
 
     private JCNewClass createNewNoSuchElementException() {

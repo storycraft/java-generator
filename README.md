@@ -1,7 +1,7 @@
 # Java generator
 Generator(Iterator) builder for Java
 
-Add @Generator annotation to convert method to generator. Target method's return type must be Iterator.
+Add @Generator annotation to convert method to generator. Method return type must be Iterable or Iterator.
 
 This annotation processor hack into javac internal api to modifiy AST(abstract syntax tree)
 
