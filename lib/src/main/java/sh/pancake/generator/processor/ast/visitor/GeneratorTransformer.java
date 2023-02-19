@@ -63,8 +63,7 @@ public class GeneratorTransformer {
                         treeMaker.TypeIdent(TypeTag.INT),
                         treeMaker.Literal(TypeTag.INT, Constants.GENERATOR_STEP_START)),
                 retType,
-                nameMapper.map(Constants.GENERATOR_LOOP),
-                nameMapper.map(Constants.GENERATOR_STATE_SWITCH));
+                nameMapper.map(Constants.GENERATOR_LOOP));
         current = block.nextState().statements;
 
         labelMap = new HashMap<>();
@@ -121,7 +120,7 @@ public class GeneratorTransformer {
     private List<JCStatement> createJump(StepTag tag) {
         return List.of(
                 treeMaker.Exec(treeMaker.Assign(treeMaker.Ident(block.getStateFieldName()), tag.getLiteral())),
-                treeMaker.Break(block.stateSwitchLabel));
+                treeMaker.Continue(block.loopLabel));
     }
 
     private StepTag createStepTag() {

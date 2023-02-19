@@ -18,7 +18,6 @@ public class Constants {
 
     public static final String GENERATOR_STATE = "state";
     public static final String GENERATOR_LOOP = "loop";
-    public static final String GENERATOR_STATE_SWITCH = "switch";
     public static final String GENERATOR_TMP = "tmp";
     public static final String GENERATOR_RESULT = "result";
 

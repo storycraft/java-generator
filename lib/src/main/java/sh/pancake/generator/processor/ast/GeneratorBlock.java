@@ -26,18 +26,16 @@ public class GeneratorBlock {
     public final JCExpression resultType;
 
     public final Name loopLabel;
-    public final Name stateSwitchLabel;
 
     private int nextStateId;
     private final ArrayList<GeneratorState> states;
 
     private final ListBuffer<JCVariableDecl> capturedVar;
 
-    public GeneratorBlock(JCVariableDecl stateField, JCExpression resultType, Name loopLabel, Name stateSwitchLabel) {
+    public GeneratorBlock(JCVariableDecl stateField, JCExpression resultType, Name loopLabel) {
         this.stateField = stateField;
         this.resultType = resultType;
         this.loopLabel = loopLabel;
-        this.stateSwitchLabel = stateSwitchLabel;
 
         nextStateId = Constants.GENERATOR_STEP_START;
         states = new ArrayList<>();
@@ -112,9 +110,9 @@ public class GeneratorBlock {
                         treeMaker.Literal(TypeTag.BOOLEAN, 1),
                         treeMaker.Try(
                                 treeMaker.Block(0,
-                                        List.of(treeMaker.Labelled(stateSwitchLabel, treeMaker.Switch(
+                                        List.of(treeMaker.Switch(
                                                 treeMaker.Ident(stateField.name),
-                                                cases.toList())))),
+                                                cases.toList()))),
                                 List.of(createCatch(treeMaker, names)),
                                 null)));
     }
