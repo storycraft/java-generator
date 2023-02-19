@@ -341,7 +341,7 @@ public class GeneratorTransformer {
         @Override
         public void visitReturn(JCReturn that) {
             current.add(createAssignStep(createStepTag(Constants.GENERATOR_STEP_FINISH)));
-            current.add(treeMaker.Return(that.expr == null ? treeMaker.Literal(TypeTag.BOT, null) : that.expr));
+            current.add(treeMaker.Return(that.expr));
         }
 
         @Override
@@ -468,6 +468,7 @@ public class GeneratorTransformer {
             current.addAll(createJump(defaultBreak));
         }
 
+        // TODO
         @Override
         public void visitTry(JCTry that) {
 
