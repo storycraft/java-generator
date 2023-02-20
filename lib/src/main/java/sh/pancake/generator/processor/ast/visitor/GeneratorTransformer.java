@@ -353,8 +353,14 @@ public class GeneratorTransformer {
 
         @Override
         public void visitReturn(JCReturn that) {
+            if (that.expr != null) {
+                log.rawError(that.pos, "Generator cannot return with value");
+                return;
+            }
+
             current.add(createAssignStep(createStepTag(Constants.GENERATOR_STEP_FINISH)));
-            current.add(treeMaker.Return(that.expr));
+            current.add(treeMaker.Break(block.loopLabel));
+            switchToNextState();
         }
 
         @Override
@@ -495,16 +501,37 @@ public class GeneratorTransformer {
 
         @Override
         public void visitTry(JCTry that) {
+            ListBuffer<JCExpression> resourceBuf = new ListBuffer<>();
+            for (JCTree resource : that.resources) {
+                if (resource instanceof JCVariableDecl decl) {
+                    decl.accept(this);
+                    resourceBuf.add(treeMaker.Ident(decl.name));
+                } else if (resource instanceof JCExpression expr) {
+                    resourceBuf.add(expr);
+                } else {
+                    log.rawError(resource.pos, "Invalid resource in try statement");
+                    return;
+                }
+            }
+
             current.add(createAssignStep(createStepTag(switchToNextState().id)));
 
-            JCTry tryStat = treeMaker.Try(null, null, treeMaker.Block(0, List.nil()));
+            JCTry tryStat = treeMaker.Try(null, null, null);
             current.add(tryStat);
 
             StepTag finallyTag = createStepTag();
 
             current.addAll(createJump(finallyTag));
 
-            tryStat.body = treeMaker.Block(0, List.of(nested(that.body)));
+            JCBlock bodyBlock = treeMaker.Block(0, List.of(nested(that.body)));
+            for (JCExpression resource : resourceBuf) {
+                bodyBlock = treeMaker.Block(0, List.of(treeMaker.Try(
+                        bodyBlock,
+                        List.of(createResourceCatch(resource)),
+                        null),
+                        createResourceClose(resource)));
+            }
+            tryStat.body = bodyBlock;
 
             ListBuffer<JCCatch> catcherBuffer = new ListBuffer<>();
             for (JCCatch catcher : that.catchers) {
@@ -530,6 +557,49 @@ public class GeneratorTransformer {
             tryStat.catchers = catcherBuffer.toList();
 
             finallyTag.setStep(switchToNextState().id);
+        }
+
+        private JCStatement createResourceClose(JCExpression resource) {
+            return treeMaker.Exec(treeMaker.Apply(
+                    List.nil(),
+                    treeMaker.Select(
+                            treeMaker.TypeCast(
+                                    TreeMakerUtil.createClassName(treeMaker, names, "java", "lang", "AutoCloseable"),
+                                    resource),
+                            names.close),
+                    List.nil()));
+        }
+
+        private JCCatch createResourceCatch(JCExpression resource) {
+            JCExpression throwableType = TreeMakerUtil.createClassName(treeMaker, names, "java", "lang", "Throwable");
+
+            JCVariableDecl throwableDecl = treeMaker.VarDef(
+                    treeMaker.Modifiers(0),
+                    nameMapper.map("t"),
+                    throwableType,
+                    null);
+
+            JCVariableDecl closeThrowableDecl = treeMaker.VarDef(
+                    treeMaker.Modifiers(0),
+                    nameMapper.map("t"),
+                    throwableType,
+                    null);
+
+            JCCatch catchCloseSuppressed = treeMaker.Catch(closeThrowableDecl, treeMaker.Block(0, List.of(
+                    treeMaker.Exec(treeMaker.Apply(
+                            List.nil(),
+                            treeMaker.Select(treeMaker.Ident(throwableDecl.name), names.addSuppressed),
+                            List.of(treeMaker.Ident(closeThrowableDecl.name)))))));
+
+            return treeMaker.Catch(
+                    throwableDecl,
+                    treeMaker.Block(0, List.of(
+                            treeMaker.If(treeMaker.Binary(Tag.NE, resource, treeMaker.Literal(TypeTag.BOT, null)),
+                                    treeMaker.Block(0, List.of(
+                                            treeMaker.Try(treeMaker.Block(0, List.of(createResourceClose(resource))),
+                                                    List.of(catchCloseSuppressed), null),
+                                            treeMaker.Throw(treeMaker.Ident(throwableDecl.name)))),
+                                    null))));
         }
 
         @Override

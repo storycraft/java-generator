@@ -11,8 +11,18 @@ import org.junit.jupiter.api.Test;
 
 public class GeneratorTest {
 
-    private <T> void step(T item) {}
-    private <T> void stepAll(Iterator<T> iterator) {}
+    private <T> void step(T item) {
+    }
+
+    private <T> void stepAll(Iterator<T> iterator) {
+    }
+
+    private static class TestCloseable implements AutoCloseable {
+        @Override
+        public void close() throws Exception {
+            System.out.println("Closed");
+        }
+    }
 
     @Generator
     private Iterator<Integer> gen1() {
@@ -33,20 +43,21 @@ public class GeneratorTest {
                 break;
         }
 
+        try {
+            try (TestCloseable t = new TestCloseable()) {
+                step(2);
+                step(2);
+                return null;
+                step(2);
+            }
+        } catch (Throwable t) {
+            step(1223122);
+            t.printStackTrace();
+        }
+
         for (int i = 0; i < 5; i++) {
             System.out.println("i: " + i);
         }
-
-        try {
-            step(2);
-            step(2);
-            step(2);
-            step(2);
-            step(2);
-        } catch(Exception e) {
-            step(1223122);
-            throw new RuntimeException(e);
-        } finally {}
 
         switch (a) {
             default:
