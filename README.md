@@ -20,8 +20,9 @@ Annotation processor converts normal method into method returning complex state 
 - [x] synchronized
 - [x] do-while
 - [ ] try block
-  - [ ] try
-  - [ ] catch
+  - [x] try
+  - [x] catch
+  - [ ] finally
   - [ ] try with resources
 - [x] switch
 - [ ] switch expression

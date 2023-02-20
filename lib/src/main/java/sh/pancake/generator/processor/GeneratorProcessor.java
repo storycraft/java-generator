@@ -89,5 +89,7 @@ public class GeneratorProcessor extends AbstractProcessor {
         GeneratorTransformer transformer = GeneratorTransformer.createRoot(cx, nameMapper, iteratorType);
         method.mods.annotations = method.mods.annotations.prepend(createGeneratedAnnotation());
         method.body = new GeneratorBuilder(cx, nameMapper, transformer.transform(method.body)).buildMethodBlock();
+
+        System.out.println(method);
     }
 }

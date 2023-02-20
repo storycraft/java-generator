@@ -6,11 +6,13 @@
 package sh.pancake.generator;
 
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 import org.junit.jupiter.api.Test;
 
 public class GeneratorTest {
+
+    private <T> void step(T item) {}
+    private <T> void stepAll(Iterator<T> iterator) {}
 
     @Generator
     private Iterator<Integer> gen1() {
@@ -34,6 +36,17 @@ public class GeneratorTest {
         for (int i = 0; i < 5; i++) {
             System.out.println("i: " + i);
         }
+
+        try {
+            step(2);
+            step(2);
+            step(2);
+            step(2);
+            step(2);
+        } catch(Exception e) {
+            step(1223122);
+            throw new RuntimeException(e);
+        } finally {}
 
         switch (a) {
             default:
@@ -64,7 +77,7 @@ public class GeneratorTest {
     }
 
     @Generator
-    Iterator<Integer> gen2(Iterator<Integer> iter2) {
+    private Iterable<Integer> gen2(Iterator<Integer> iter2) {
         step(100);
 
         stepAll(iter2);
@@ -73,7 +86,7 @@ public class GeneratorTest {
     }
 
     @Generator
-    public Iterator<Integer> gen(Iterator<Integer> iter2) {
+    private Iterator<Integer> gen(Iterator<Integer> iter2) {
         int i = 0;
 
         do {
@@ -88,9 +101,8 @@ public class GeneratorTest {
 
     @Test
     public void testGenerator() {
-        Iterator<Integer> testGen = gen2(gen1());
-        while (testGen.hasNext()) {
-            System.out.println(testGen.next());
+        for (int i : gen2(gen1())) {
+            System.out.println(i);
         }
     }
 }
