@@ -471,8 +471,6 @@ public class GeneratorTransformer {
 
                 current.addAll(createJump(defaultContinue));
             }
-
-            switchToNextState();
         }
 
         @Override
@@ -515,10 +513,9 @@ public class GeneratorTransformer {
             current.add(createAssignStep(createStepTag(switchToNextState().id)));
 
             JCTry tryStat = treeMaker.Try(null, null, null);
-            current.add(tryStat);
-
             StepTag finallyTag = createStepTag();
 
+            current.add(tryStat);
             current.addAll(createJump(finallyTag));
 
             JCBlock bodyBlock = treeMaker.Block(0, List.of(nested(that.body)));
