@@ -205,13 +205,6 @@ public class GeneratorTransformer {
             }
         }
 
-        private void branch(ListBuffer<JCStatement> branchBuf, JCStatement branch) {
-            current = branchBuf;
-            transform(branch);
-
-            return;
-        }
-
         @Override
         public void visitIf(JCIf that) {
             StepTag endTag = createStepTag();
@@ -394,11 +387,13 @@ public class GeneratorTransformer {
             ListBuffer<JCStatement> buf = current;
             ListBuffer<JCStatement> body = new ListBuffer<>();
 
-            branch(body, that.body);
+            current = body;
+            transform(that.body);
             if (current != buf) {
                 log.rawError(that.pos, "Cannot yield inside of synchronized block");
                 return;
             }
+            current = buf;
 
             current.add(treeMaker.Synchronized(that.lock, treeMaker.Block(0, body.toList())));
         }
