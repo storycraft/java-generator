@@ -49,7 +49,7 @@ public class GeneratorTransformer {
     @Nullable
     private StepTag defaultContinue;
 
-    private final StatementTransformer statementTransformer;
+    private final Inner inner;
 
     private GeneratorTransformer(TreeMaker treeMaker, Names names, Log log, NameMapper nameMapper,
             JCExpression retType) {
@@ -71,10 +71,8 @@ public class GeneratorTransformer {
         current = block.nextState().statements;
 
         labelMap = new HashMap<>();
-        defaultBreak = null;
-        defaultContinue = null;
 
-        statementTransformer = new StatementTransformer();
+        inner = new Inner();
     }
 
     public static GeneratorTransformer createRoot(Context cx, NameMapper nameMapper, JCExpression retType) {
@@ -93,7 +91,7 @@ public class GeneratorTransformer {
     }
 
     private GeneratorBlock transformInner(JCStatement statement) {
-        statementTransformer.transform(statement);
+        inner.transform(statement);
 
         switchToNextState();
         current.add(createAssignStep(createStepTag(Constants.GENERATOR_STEP_FINISH)));
@@ -150,11 +148,11 @@ public class GeneratorTransformer {
     }
 
     private void step(JCExpression stepExpr) {
-        ListBuffer<JCStatement> buf = current;
-        GeneratorState next = switchToNextState();
+        StepTag nextTag = createStepTag();
+        current.add(createAssignStep(nextTag));
+        current.add(treeMaker.Return(stepExpr));
 
-        buf.add(createAssignStep(createStepTag(next.id)));
-        buf.add(treeMaker.Return(stepExpr));
+        nextTag.setStep(switchToNextState().id);
     }
 
     private void stepAll(JCExpression stepAllExpr) {
@@ -190,10 +188,10 @@ public class GeneratorTransformer {
         return subBlock.createNextStatement(treeMaker, names);
     }
 
-    private class StatementTransformer extends Visitor {
+    private class Inner extends Visitor {
         private final TransformChecker checker;
 
-        public StatementTransformer() {
+        public Inner() {
             checker = new TransformChecker();
         }
 
