@@ -1,4 +1,6 @@
 # Java generator
+Project moved to https://github.com/storycraft/lombok
+
 Generator(Iterator) builder for Java
 
 Add @Generator annotation to convert method to generator. Method return type must be Iterable or Iterator.
@@ -10,25 +12,6 @@ Annotation processor converts normal method into method returning complex state 
 
 ## Limitations
 1. You cannot use yield inside of synchronized block. The monitor lock cannot be held across method. Use lock object instead.
-
-## Todo
-- [x] for
-- [x] foreach iterable
-- [ ] foreach arrays
-- [x] if
-- [x] while
-- [x] synchronized
-- [x] do-while
-- [ ] try block
-  - [x] try
-  - [x] catch
-  - [ ] finally
-  - [ ] try with resources
-- [x] switch
-- [ ] switch expression
-- [x] continue, break
-- [x] label
-- [ ] Async runtime with await using generator
 
 ...
 
